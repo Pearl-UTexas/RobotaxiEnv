@@ -1,0 +1,87 @@
+max_step_limit:200
+
+66666666
+60000206
+60003006
+60004006
+60005026
+60001036
+60100006
+66666666
+R=0
+end=False
+punch:False
+pwall_pos:[0, 0]
+direction:(0,-1)
+Agent:0
+
+66666666
+60000206
+60004006
+60005006
+60000026
+60001036
+60100006
+66666666
+R=-5
+end=False
+punch:False
+pwall_pos:[0, 0]
+direction:(0,-1)
+Agent:0
+
+66666666
+60004206
+60005006
+60000006
+60000026
+60001036
+60100006
+66666666
+R=0
+end=False
+punch:False
+pwall_pos:[0, 0]
+direction:(0,-1)
+Agent:0
+
+66666666
+60045206
+60000006
+60000006
+60000026
+60001036
+60100006
+66666666
+R=0
+end=False
+punch:True
+pwall_pos:Point(x=4, y=0)
+direction:(-1,0)
+Agent:0
+
+66666666
+60450206
+60000006
+60000006
+60000026
+60001036
+60103006
+66666666
+R=0
+end=False
+punch:False
+pwall_pos:Point(x=4, y=0)
+direction:(-1,0)
+Agent:0
+
+{'action_counter_0': 4,
+ 'action_counter_1': 0,
+ 'action_counter_2': 0,
+ 'bad_fruits_eaten': 0,
+ 'good_fruits_eaten': 0,
+ 'lava_crossed': 1,
+ 'mean_reward': -1.25,
+ 'sum_episode_rewards': -5,
+ 'termination_reason': None,
+ 'timesteps_survived': 4}

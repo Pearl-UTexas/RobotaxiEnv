@@ -1,0 +1,29 @@
+Playing:
+Episode | Score | Good Fruits | Bad Fruits | Lava 
+./robotaxi/levels/16x16-obstacles-stationary-5.json
+  1/ 10 - 24 |  6.0  |     1   |     0   |   0
+./robotaxi/levels/16x16-obstacles-stationary-4.json
+  2/ 10 - 31 |  6.0  |     1   |     0   |   0
+./robotaxi/levels/16x16-obstacles-stationary-1.json
+  3/ 10 - 33 | -1.0  |     0   |     1   |   0
+./robotaxi/levels/16x16-obstacles-stationary-3.json
+  4/ 10 - 28 | -1.0  |     0   |     1   |   0
+./robotaxi/levels/16x16-obstacles-stationary-2.json
+  5/ 10 - 100 |  0.0  |     0   |     0   |   0
+./robotaxi/levels/16x16-obstacles-stationary-3.json
+  6/ 10 - 28 | -1.0  |     0   |     1   |   0
+./robotaxi/levels/16x16-obstacles-stationary-4.json
+  7/ 10 - 59 |  6.0  |     1   |     0   |   0
+./robotaxi/levels/16x16-obstacles-stationary-5.json
+  8/ 10 - 32 | -1.0  |     0   |     1   |   0
+./robotaxi/levels/16x16-obstacles-stationary-1.json
+  9/ 10 - 100 |  0.0  |     0   |     0   |   0
+./robotaxi/levels/16x16-obstacles-stationary-2.json
+ 10/ 10 - 28 | -5.0  |     0   |     0   |   1
+
+Total Score: 9.0
+Good Fruits eaten 0.3 +/- 0.5
+Bad Fruits eaten 0.4 +/- 0.5
+Lava eaten 0.1 +/- 0.3
+Final Score 0.9 +/- 3.6
+
