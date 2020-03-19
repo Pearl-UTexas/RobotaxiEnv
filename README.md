@@ -1,6 +1,9 @@
 # RoboTaxi User Study Environment
 (Game Logic Modified from repository: [snake-ai-reinforcement](https://github.com/YuriyGuts/snake-ai-reinforcement))
 
+
+![robotaxi_env](https://github.com/yuchen93/RoboTaxi/blob/master/.robotaxi_env.jpg)
+
 ## Requirements
 
 - Recommanded: [install anaconda](https://docs.anaconda.com/anaconda/install/)
@@ -30,8 +33,8 @@ $ python3 play.py --agent human [--interface gui --level robotaxi/levels/8x8-bla
 ```
 
 ## Playback Recordings
-To playback recorded behavior with added Noise (with option --original to use original visualization, --save_frames to save individual game frames as images):
+To playback recorded behavior:
 ```
-python3 render_from_log.py --log_file <log_file_name> [--original] [--save_frames]
+python3 render_from_log.py --log_file <log_file_name> [--save_frames]
 ```
 

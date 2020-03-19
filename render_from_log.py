@@ -1219,6 +1219,8 @@ def parse_command_line_args(args):
 
 def main():
     parsed_args = parse_command_line_args(sys.argv[1:])
+    if parsed_args.save_frames:
+        if not os.path.exists('./screenshots'):  os.makedirs('./screenshots')   
     if parsed_args.stationary: PyGameGUI.FPS_LIMIT = 3
     else: PyGameGUI.FPS_LIMIT = 0.8
     log_data = []
@@ -1264,6 +1266,7 @@ def main():
             frame_data = []
 
     hit_wall.append(False)
+
     game_replay = PyGameGUI(field_size=field_size, original=parsed_args.original, num_noise_color=parsed_args.num_noise_color, noise_prob=parsed_args.noise_prob, save_frames=parsed_args.save_frames, proxy=0, stationary=parsed_args.stationary)
     
     try:        
