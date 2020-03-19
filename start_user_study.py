@@ -340,7 +340,7 @@ class PyGameGUI:
 
         self.screen_size = ((self.field_size + 6) * self.CELL_SIZE, self.field_size * self.CELL_SIZE)
         
-        self.screen = pygame.display.set_mode(self.screen_size, flags=pygame.FULLSCREEN|pygame.HWSURFACE)
+        self.screen = pygame.display.set_mode(self.screen_size) #, flags=pygame.FULLSCREEN|pygame.HWSURFACE)
         self.curr_head = [0,0]
         self.mid = [0,0]
         self.last_head = [0,0]
