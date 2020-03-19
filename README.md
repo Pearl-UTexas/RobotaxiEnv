@@ -27,7 +27,7 @@ To use the GUI mode, run:
 $ python3 play.py --agent mixed [--interface gui --level robotaxi/levels/8x8-blank.json --num-episodes 1]
 ```
 
-To play on your own using the arrow keys (I know you want to), run:
+To play on your own using the arrow keys, run:
 ```
 $ python3 play.py --agent human [--interface gui --level robotaxi/levels/8x8-blank.json --num-episodes 1]
 ```
