@@ -1272,17 +1272,17 @@ def main():
     try:        
         exp_id = parsed_args.log_file.split('/')[-1].split('.')[0]
         if parsed_args.capture:            
-            capture_thread0 = audioThread(0, "audio thread", 0, parsed_args.participant+'_'+exp_id)
+            #capture_thread0 = audioThread(0, "audio thread", 0, parsed_args.participant+'_'+exp_id)
             capture_thread1 = captureThread(0, "webcam thread", 1, parsed_args.participant+'_'+exp_id)
-            capture_thread0.start()
+            #capture_thread0.start()
             capture_thread1.start()
         game_replay.render(log_data, hit_wall, hit_wall_poses, direction, score, max_step_limit, exp_id, participant=parsed_args.participant, human_label=parsed_args.human_label)
         if parsed_args.capture:
-            capture_thread0.join()
+            #capture_thread0.join()
             capture_thread1.join()
     except QuitRequestedError:
         if parsed_args.capture:
-            capture_thread0.join()
+            #capture_thread0.join()
             capture_thread1.join()
 
 
