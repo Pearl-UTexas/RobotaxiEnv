@@ -2,14 +2,40 @@
 
 //First read in the contents of the right JSON file to create the
 //right initial state
-alert("hello world");
+//alert("hello world");
 
 
 //some bug with reading json here
-var json_path = document.currentScript.getAttribute('json_path');
-alert(json_path);
-var json_file = JSON.parse(json_path);
-alert(JSON.stringify(json_path));
+//var json_path = document.currentScript.getAttribute('json_path');
+//alert("first");
+
+//function loadJSON(filePath, success, error) {
+//    var xhr = new XMLHttpRequest();
+//    xhr.onreadystatechange = function() {
+//	if (xhr.readystate === XMLHttpRequest.DONE) {
+//	    if (xhr.status === 200) {
+//		if (success)
+//		    success(JSON.parse(xhr.responseText));
+//	    }
+//	    else {
+//		if (error)
+//		    error(xhr);
+//	    }
+//	}
+//    };
+//    xhr.open('GET', filePath, true);
+//    xhr.send();
+//}
+
+//
+//alert('first');
+//alert('hi')
+//var json_file = JSON.parse('test.json');
+//$.getJSON('test.json', function(json) {
+//    console.log(json)
+//    json_file = json;
+//});
+var json_file = JSON.parse('{  "field": [    "########",    "#......#",    "#......#",    "#...S..#",    "#......#",    "#......#",    "#......#",    "########"  ],  "initial_snake_length": 2,  "max_step_limit": 200,  "rewards": {    "timestep": 0,    "good_fruit": 6,    "bad_fruit": -1,    "died": 0,    "lava": -5  }}');
 
 var dots = json_file.initial_snake_length;
 
@@ -20,6 +46,7 @@ var ctx;
 var auto_bus_east;
 var auto_bus_north;
 var auto_bus_south;
+var auto_bus_west;
 var bad_man;
 var body;
 var bomb;
@@ -108,10 +135,10 @@ var upDirection = false;
 var downDirection = false;
 var inGame = true;
 
-const DOT_SIZE = 50;
 const DELAY = 140;
-const C_HEIGHT = 400;
-const C_WIDTH = 400;
+const C_HEIGHT = 700;
+const C_WIDTH = 700;
+const DOT_SIZE = C_HEIGHT / json_file.field[0].length;
 const MAX_DOTS = json_file.field[0].length * json_file.field.length
 
 //keyboard bindings for the arrow keys
@@ -125,6 +152,7 @@ var x = new Array(MAX_DOTS);
 var y = new Array(MAX_DOTS);
 var orientation = new Array(MAX_DOTS);    //0: n, 1: w, 2: s, 3: e
 
+
 function init() {
     canvas = document.getElementById('myCanvas');
     ctx = canvas.getContext('2d');
@@ -134,14 +162,15 @@ function init() {
 
     //Find the start of the snake and create initialize it at the given x,y
     for (var i = 0; i < json_file.field[0].length; i++) {
-	for (var j = 0; j < json_field.length; j++) {
-	    if (json_file.field[i].charAt(j) == 'S') {
-		createSnake(i * DOT_SIZE, j * DOT_SIZE);
+	    for (var j = 0; j < json_file.field.length; j++) {
+	        if (json_file.field[i].charAt(j) == 'S') {
+                createSnake(i * DOT_SIZE, j * DOT_SIZE);
+	        }
 	    }
-	}
     }
 
     doDrawing();
+
     //start the game after everything's loaded up
     setTimeout("gameCycle()", DELAY);
 }    
@@ -155,6 +184,9 @@ function loadImages() {
     
     auto_bus_south = new Image();
     auto_bus_south.src = '../icon/auto_bus_south.png';
+
+    auto_bus_west = new Image();
+    auto_bus_west.src = '../icon/auto_bus_west.png';
     
     bad_man = new Image();
     bad_man.src = '../icon/bad_man.png';
@@ -392,49 +424,62 @@ function createSnake(startx, starty) {
     for (var z = 0; z < dots; z++) {
         x[z] = startx - z * DOT_SIZE;
         y[z] = starty;
-	orientation[z] = 3;
+        orientation[z] = 3;
     }
 }
 
 function doDrawing() {
     
-    ctx.clearRect(0, 0, C_WIDTH, C_HEIGHT);
+    ctx.clearRect(0, 0, C_WIDTH * 2, C_HEIGHT);
+
+    ctx.fillStyle = 'black';
+    ctx.textBaseline = 'middle'; 
+    ctx.textAlign = 'center'; 
+    ctx.font = 'normal bold 40px serif';
     
     if (inGame) {
-	for (var i = 0; i < json_file.field[0].length; i++) {
-	    for (var j = 0; j < json_field.length; j++) {
-		//check for dot first because of runtime efficency
-		if (json_file.field[i].charAt(j) != '.') {
-		    //draw whatever extra images you want
-		    if (json_file.field[i].charAt(j) == '#') {
-			ctx.drawImage(trees, i * DOT_SIZE, j * DOT_SIZE);
-		    }
-		    if (json_file.field[i].charAt(j) == '0') {
-			ctx.drawImage(man, i * DOT_SIZE, j * DOT_SIZE);
-		    }
-		    if (json_file.field[i].charAt(j) == 'o') {
-			ctx.drawImage(road_block, i * DOT_SIZE, j * DOT_SIZE);
-		    }
-		    if (json_file.field[i].charAt(j) == '!') {
-			ctx.drawImage(car, i * DOT_SIZE, j * DOT_SIZE);
-		    }
-		}
-	    }
-	}
+        ctx.fillText('EARNINGS', C_WIDTH + 200, C_HEIGHT / 2 + 100)
 
-        for (var z = 0; z < dots; z++) {
-	    if (orientation[z] == 0) {
-		ctx.drawImage(auto_bus_north, x[z], y[z])
-	    }
-	    if (orientation[z] == 1) {
-		ctx.drawImage(auto_bus_east, x[z], y[z])
-	    }
-	    if (orientation[z] == 2) {
-		ctx.drawImage(auto_bus_south, x[z], y[z])
-	    }
-	    if (orientation[z] == 3) {
-		ctx.drawImage(auto_bus_east, x[z], y[z])
-	    }
+        ctx.fillStyle = 'brown';
+        ctx.fillRect(C_WIDTH + 138, C_HEIGHT / 2 + 125, 125, 50)
+
+        ctx.fillStyle = 'black';
+        ctx.fillText('$' + score, C_WIDTH + 200, C_HEIGHT / 2 + 150)
+
+        for (var i = 0; i < json_file.field[0].length; i++) {
+            for (var j = 0; j < json_file.field.length; j++) {
+                //check for dot first because of runtime efficency
+                if (json_file.field[i].charAt(j) != '.') {
+                    //draw whatever extra images you want
+                    if (json_file.field[i].charAt(j) == '#') {
+                        ctx.drawImage(forest, i * DOT_SIZE, j * DOT_SIZE);
+                    }
+                    if (json_file.field[i].charAt(j) == '0') {
+                        ctx.drawImage(man, i * DOT_SIZE, j * DOT_SIZE);
+                    }
+                    if (json_file.field[i].charAt(j) == 'o') {
+                        ctx.drawImage(road_block, i * DOT_SIZE, j * DOT_SIZE);
+                    }
+                    if (json_file.field[i].charAt(j) == '!') {
+                        ctx.drawImage(car, i * DOT_SIZE, j * DOT_SIZE);
+                    }
+                }
+            }
+        }
+
+        for (var z = dots - 1; z >= 0; z--) {
+            if (orientation[z] == 0) {
+                ctx.drawImage(auto_bus_north, x[z], y[z])
+            }
+            if (orientation[z] == 1) {
+                ctx.drawImage(auto_bus_west, x[z], y[z])
+            }
+            if (orientation[z] == 2) {
+                ctx.drawImage(auto_bus_south, x[z], y[z])
+            }
+            if (orientation[z] == 3) {
+                ctx.drawImage(auto_bus_east, x[z], y[z])
+            }
         }    
     }
     else {
@@ -443,13 +488,13 @@ function doDrawing() {
 }
 
 function gameOver() {
-    
-    ctx.fillStyle = 'white';
+    ctx.fillStyle = 'black';
     ctx.textBaseline = 'middle'; 
     ctx.textAlign = 'center'; 
-    ctx.font = 'normal bold 18px serif';
-    
-    ctx.fillText('Game over', C_WIDTH/2, C_HEIGHT/2);
+    ctx.font = 'normal bold 50px serif';
+
+    ctx.fillText('Game over', C_WIDTH, C_HEIGHT/2);
+    ctx.fillText('Score: ' + score, C_WIDTH, C_HEIGHT/2 + 45);
 }
 
 function move() {
@@ -483,7 +528,6 @@ function move() {
 }    
 
 function checkCollision() {
-
     for (var z = dots; z > 0; z--) {
 	//z > 4 check is present to check if it's even possible for
 	//a collision to happen
@@ -516,9 +560,9 @@ function gameCycle() {
         move();
         checkCollision();
         doDrawing();
-	if (cycles < json_file.max_step_limit) {
-	    setTimeout("gameCycle()", DELAY);
-	}
+        if (cycles < json_file.max_step_limit) {
+            setTimeout("gameCycle()", DELAY);
+        }
     }
 }
 
@@ -545,7 +589,7 @@ onkeydown = function(e) {
     }
 
     if ((key == DOWN_KEY) && (!upDirection)) {
-        
+        downDirection = true;        
         rightDirection = false;
         leftDirection = false;
     }        
