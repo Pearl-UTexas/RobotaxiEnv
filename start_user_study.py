@@ -15,7 +15,7 @@ import cv2
 import threading
 import time
 
-import pyaudio
+#import pyaudio
 import wave
 
 from os.path import isfile, join
@@ -1408,23 +1408,23 @@ def main():
             if not os.path.exists(data_dir+'webcam_imgs/'+parsed_args.participant+'/'+exp_id):
                 os.makedirs(data_dir+'webcam_imgs/'+parsed_args.participant+'/'+exp_id)
                 
-            capture_thread0 = audioThread(0, "aud", 0, data_dir, parsed_args.participant, parsed_args.participant+'_'+exp_id)
+            #capture_thread0 = audioThread(0, "aud", 0, data_dir, parsed_args.participant, parsed_args.participant+'_'+exp_id)
             capture_thread1 = captureThread(1, "cam", 1,  data_dir, parsed_args.participant, exp_id, parsed_args.participant+'_'+exp_id)
-            capture_thread0.start()
+            #capture_thread0.start()
             capture_thread1.start()
         game_replay.render(log_data, hit_wall, hit_wall_poses, direction, score, max_step_limit, exp_id, participant=parsed_args.participant)
         print('Final Score:', score[-1])
         
         if parsed_args.capture:
-            capture_thread0.stop()
+            #capture_thread0.stop()
             capture_thread1.stop()
-            capture_thread0.join()
+            #capture_thread0.join()
             capture_thread1.join()
     except QuitRequestedError:
         if parsed_args.capture:
-            capture_thread0.stop()
+            #capture_thread0.stop()
             capture_thread1.stop()
-            capture_thread0.join()
+            #capture_thread0.join()
             capture_thread1.join()
 
 
