@@ -35,7 +35,9 @@
 //    console.log(json)
 //    json_file = json;
 //});
-var json_file = JSON.parse('{  "field": [    "########",    "#......#",    "#......#",    "#...S..#",    "#......#",    "#......#",    "#......#",    "########"  ],  "initial_snake_length": 2,  "max_step_limit": 200,  "rewards": {    "timestep": 0,    "good_fruit": 6,    "bad_fruit": -1,    "died": 0,    "lava": -5  }}');
+
+//var json_file = JSON.parse('{  "field": [    "########",    "#......#",    "#......#",    "#...S..#",    "#......#",    "#......#",    "#......#",    "########"  ],  "initial_snake_length": 2,  "max_step_limit": 200,  "rewards": {    "timestep": 0,    "good_fruit": 6,    "bad_fruit": -1,    "died": 0,    "lava": -5  }}');
+var json_file = JSON.parse('{  "field": [    "########",    "#......#",    "#...S..#",    "#......#",    "#.P....#",    "#...C..#",    "#......#",    "########"  ],  "initial_snake_length": 2,  "max_step_limit": 200,  "rewards": {    "timestep": 0,    "good_fruit": 1,    "bad_fruit": -1,    "died": 0,    "lava": -2  }}');
 
 var dots = json_file.initial_snake_length;
 
@@ -133,6 +135,7 @@ var leftDirection = false;
 var rightDirection = true;
 var upDirection = false;
 var downDirection = false;
+var go = false;
 var inGame = true;
 
 const DELAY = 140;
@@ -150,7 +153,17 @@ const DOWN_KEY = 40;
 //set what the max size of the snake can be
 var x = new Array(MAX_DOTS);
 var y = new Array(MAX_DOTS);
-var orientation = new Array(MAX_DOTS);    //0: n, 1: w, 2: s, 3: e
+var orientation = new Array(MAX_DOTS);    // 0: n, 1: w, 2: s, 3: e
+var map = new Array(json_file.field.length)
+var accident_tracker = new Array(json_file.field.length)
+
+for (var i = 0; i < json_file.field.length; i++) {
+    map[i] = json_file.field[i].split("");
+    accident_tracker[i] = new Array(json_file.field[i].length);
+    for (var j = 0; j < json_file.field[0].length; j++) {
+        accident_tracker[i][j] = 0;
+    }
+}
 
 
 function init() {
@@ -421,6 +434,7 @@ function loadImages() {
 }
 
 function createSnake(startx, starty) {
+    //instantiate the snake given a start (x,y)
     for (var z = 0; z < dots; z++) {
         x[z] = startx - z * DOT_SIZE;
         y[z] = starty;
@@ -430,112 +444,151 @@ function createSnake(startx, starty) {
 
 function doDrawing() {
     
+    //first clear what was already present in the canvas
     ctx.clearRect(0, 0, C_WIDTH * 2, C_HEIGHT);
 
     ctx.fillStyle = 'black';
     ctx.textBaseline = 'middle'; 
     ctx.textAlign = 'center'; 
+
+    //add font functionality later
     ctx.font = 'normal bold 40px serif';
-    
-    if (inGame) {
-        ctx.fillText('EARNINGS', C_WIDTH + 200, C_HEIGHT / 2 + 100)
 
-        ctx.fillStyle = 'brown';
-        ctx.fillRect(C_WIDTH + 138, C_HEIGHT / 2 + 125, 125, 50)
+    //create basic rendering of the right side of the screen
+    ctx.fillText('EARNINGS', C_WIDTH + 200, C_HEIGHT / 2 + 100)
 
-        ctx.fillStyle = 'black';
+    ctx.fillStyle = '#A0522D';
+    ctx.fillRect(C_WIDTH + 138, C_HEIGHT / 2 + 125, 125, 50)
+
+    ctx.fillStyle = 'black';
+    if (score < 0)
+        ctx.fillText('-$' + (-1 * score), C_WIDTH + 200, C_HEIGHT / 2 + 150)
+    else
         ctx.fillText('$' + score, C_WIDTH + 200, C_HEIGHT / 2 + 150)
 
-        for (var i = 0; i < json_file.field[0].length; i++) {
-            for (var j = 0; j < json_file.field.length; j++) {
-                //check for dot first because of runtime efficency
-                if (json_file.field[i].charAt(j) != '.') {
-                    //draw whatever extra images you want
-                    if (json_file.field[i].charAt(j) == '#') {
-                        ctx.drawImage(forest, i * DOT_SIZE, j * DOT_SIZE);
-                    }
-                    if (json_file.field[i].charAt(j) == '0') {
+    //render all of the bus
+    for (var z = dots - 1; z >= 0; z--) {
+        if (orientation[z] == 0) {
+            ctx.drawImage(auto_bus_north, x[z], y[z])
+        }
+        if (orientation[z] == 1) {
+            ctx.drawImage(auto_bus_west, x[z], y[z])
+        }
+        if (orientation[z] == 2) {
+            ctx.drawImage(auto_bus_south, x[z], y[z])
+        }
+        if (orientation[z] == 3) {
+            ctx.drawImage(auto_bus_east, x[z], y[z])
+        }
+    }
+
+    //render the other images/obstacles over the bus
+    for (var i = 0; i < map[0].length; i++) {
+        for (var j = 0; j < map.length; j++) {
+            //check for dot first because of runtime efficency
+            if (map[i][j] != '.') {
+                //draw whatever extra images you want
+                if (map[i][j] == '#') {
+                    ctx.drawImage(forest, i * DOT_SIZE, j * DOT_SIZE);
+                }
+                if (map[i][j] == 'P') {
+                    if (accident_tracker[i][j] == 0)
                         ctx.drawImage(man, i * DOT_SIZE, j * DOT_SIZE);
-                    }
-                    if (json_file.field[i].charAt(j) == 'o') {
-                        ctx.drawImage(road_block, i * DOT_SIZE, j * DOT_SIZE);
-                    }
-                    if (json_file.field[i].charAt(j) == '!') {
-                        ctx.drawImage(car, i * DOT_SIZE, j * DOT_SIZE);
-                    }
+                    else
+                        ctx.drawImage(dollar, i * DOT_SIZE, j * DOT_SIZE);
+                }
+                if (map[i][j] == 'o') {
+                    ctx.drawImage(road_block, i * DOT_SIZE, j * DOT_SIZE);
+                }
+                if (map[i][j] == 'C') {
+                    if (accident_tracker[i][j] == 0)
+                        ctx.drawImage(purple_car, i * DOT_SIZE, j * DOT_SIZE);
+                    else
+                        ctx.drawImage(broken_purple_car, i * DOT_SIZE, j * DOT_SIZE);
                 }
             }
         }
-
-        for (var z = dots - 1; z >= 0; z--) {
-            if (orientation[z] == 0) {
-                ctx.drawImage(auto_bus_north, x[z], y[z])
-            }
-            if (orientation[z] == 1) {
-                ctx.drawImage(auto_bus_west, x[z], y[z])
-            }
-            if (orientation[z] == 2) {
-                ctx.drawImage(auto_bus_south, x[z], y[z])
-            }
-            if (orientation[z] == 3) {
-                ctx.drawImage(auto_bus_east, x[z], y[z])
-            }
-        }    
     }
-    else {
-        gameOver();
-    }        
+    
 }
 
 function gameOver() {
+    //render the gameover scene
+    ctx.clearRect(0, 0, C_WIDTH * 2, C_HEIGHT);
     ctx.fillStyle = 'black';
     ctx.textBaseline = 'middle'; 
     ctx.textAlign = 'center'; 
     ctx.font = 'normal bold 50px serif';
 
     ctx.fillText('Game over', C_WIDTH, C_HEIGHT/2);
-    ctx.fillText('Score: ' + score, C_WIDTH, C_HEIGHT/2 + 45);
+
+    //basically putting the minus sign in the right spot
+    if (score < 0)
+        ctx.fillText('Score: -$' + (-1 * score), C_WIDTH, C_HEIGHT/2 + 45);
+    else
+        ctx.fillText('Score: $' + score, C_WIDTH, C_HEIGHT/2 + 45);
+}
+
+function timestepExceeded() {
+    //render the ran out of steps scene
+    ctx.clearRect(0, 0, C_WIDTH * 2, C_HEIGHT);
+    ctx.fillStyle = 'black';
+    ctx.textBaseline = 'middle'; 
+    ctx.textAlign = 'center'; 
+    ctx.font = 'normal bold 50px serif';
+
+    //basically putting the minus sign in the right spot
+    ctx.fillText('Finished ' + cycles + ' moves!', C_WIDTH, C_HEIGHT/2);
+    if (score < 0)
+        ctx.fillText('Score: -$' + (-1 * score), C_WIDTH, C_HEIGHT/2 + 45);
+    else
+        ctx.fillText('Score: $' + score, C_WIDTH, C_HEIGHT/2 + 45);
+
 }
 
 function move() {
+    //update timestep
+    cycles += 1;
+    score += json_file.rewards.timestep;
+
     //every sprite aside from the first dot gets updated by a frame
     for (var z = dots; z > 0; z--) {
         x[z] = x[(z - 1)];
         y[z] = y[(z - 1)];
-	orientation[z] = orientation[(z - 1)];
+        orientation[z] = orientation[(z - 1)];
     }
 
     //update the head of the snake (both position and orientation)
     if (leftDirection) {
         x[0] -= DOT_SIZE;
-	orientation[0] = 1;
+        orientation[0] = 1;
     }
 
     if (rightDirection) {
         x[0] += DOT_SIZE;
-	orientation[0] = 3;
+        orientation[0] = 3;
     }
 
     if (upDirection) {
         y[0] -= DOT_SIZE;
-	orientation[0] = 0;
+        orientation[0] = 0;
     }
 
     if (downDirection) {
         y[0] += DOT_SIZE;
-	orientation[0] = 2;
+        orientation[0] = 2;
     }
 }    
 
 function checkCollision() {
     for (var z = dots; z > 0; z--) {
-	//z > 4 check is present to check if it's even possible for
-	//a collision to happen
+	    //z > 4 check is present to check if it's even possible for a collision to happen
         if ((z > 4) && (x[0] == x[z]) && (y[0] == y[z])) {
             inGame = false;
         }
     }
 
+    //if the bus goes out of bounds, it's no longer in the game
     if (y[0] >= C_HEIGHT) {
         inGame = false;
     }
@@ -551,18 +604,59 @@ function checkCollision() {
     if (x[0] < 0) {
       inGame = false;
     }
+
+    //make sure to check if in game so as to not violate array ranges
+    if (inGame) {
+        var tempX = x[0] / DOT_SIZE;
+        var tempY = y[0] / DOT_SIZE;
+
+        if (map[tempX][tempY] == 'C' && accident_tracker[tempX][tempY] == 0) {
+            //bus is on a car tile
+            score += json_file.rewards.bad_fruit;
+            accident_tracker[tempX][tempY] = 7;         //7 denotes the amount of cycles for this entity to fade away
+        }
+        else if (map[tempX][tempY] == 'P' && accident_tracker[tempX][tempY] == 0) {
+            //bus picked up a person
+            score += json_file.rewards.good_fruit;
+            accident_tracker[tempX][tempY] = 7;
+        }
+        else if (map[tempX][tempY] == '#' && accident_tracker[tempX][tempY] == 0) {
+            //bus hit a forest
+            score += json_file.rewards.died;
+            accident_tracker[tempX][tempY] = 7;
+        }
+
+        //iterate thorugh the entire map to check if any can be removed due to fade time elapsing
+        for (var i = 0; i < map.length; i++) {
+            for (var j = 0; j < map[0].length; j++) {
+                if (accident_tracker[i][j] != 0) {
+                    if (accident_tracker[i][j] == 1) {
+                        map[i][j] = '.';
+                    }
+                    accident_tracker[i][j] -= 1;
+                }
+            }
+        }
+
+    }
+
 }
 
 function gameCycle() {
-    if (inGame) {
-	cycles += 1;
-	score += json_file.rewards.timestep;
-        move();
-        checkCollision();
+    if (inGame && cycles < json_file.max_step_limit) {
         doDrawing();
-        if (cycles < json_file.max_step_limit) {
-            setTimeout("gameCycle()", DELAY);
-        }
+        if (go)
+            move();
+            checkCollision();
+        setTimeout("gameCycle()", DELAY);
+    }
+    else if (!inGame) {
+        // Crashed
+        gameOver();        
+    }
+    else {
+        // Timestep is too much
+        timestepExceeded();
     }
 }
 
@@ -570,27 +664,34 @@ onkeydown = function(e) {
     
     var key = e.keyCode;
     
+    //get key input to make the bus move in a certain direction
     if ((key == LEFT_KEY) && (!rightDirection)) {
         leftDirection = true;
         upDirection = false;
         downDirection = false;
+        go = true;
     }
-
-    if ((key == RIGHT_KEY) && (!leftDirection)) {
+    else if ((key == RIGHT_KEY) && (!leftDirection)) {
         rightDirection = true;
         upDirection = false;
         downDirection = false;
+        go = true;
     }
-
-    if ((key == UP_KEY) && (!downDirection)) {
+    else if ((key == UP_KEY) && (!downDirection)) {
         upDirection = true;
         rightDirection = false;
         leftDirection = false;
+        go = true;
     }
-
-    if ((key == DOWN_KEY) && (!upDirection)) {
+    else if ((key == DOWN_KEY) && (!upDirection)) {
         downDirection = true;        
         rightDirection = false;
         leftDirection = false;
+        go = true;
     }        
 };    
+
+//Makes sure the bus doesn't move if a key isn't pressed down
+onkeyup = function(e) {
+    go = false;
+};
