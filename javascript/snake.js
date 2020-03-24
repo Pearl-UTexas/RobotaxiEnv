@@ -36,7 +36,7 @@
 //});
 
 //var json_file = JSON.parse('{  "field": [    "########",    "#......#",    "#......#",    "#...S..#",    "#......#",    "#......#",    "#......#",    "########"  ],  "initial_snake_length": 2,  "max_step_limit": 200,  "rewards": {    "timestep": 0,    "good_fruit": 6,    "bad_fruit": -1,    "died": 0,    "lava": -5  }}');
-var json_file = JSON.parse('{  "field": [    "########",    "#......#",    "#...S..#",    "#......#",    "#.P....#",    "#...C..#",    "#......#",    "########"  ],  "initial_snake_length": 2,  "max_step_limit": 200,  "rewards": {    "timestep": 0,    "good_fruit": 1,    "bad_fruit": -1,    "died": 0,    "lava": -2  }}');
+var json_file = JSON.parse('{  "field": [    "########",    "#......#",    "#...S..#",    "#......#",    "#.P....#",    "#...C..#",    "#......#",    "########"  ],  "initial_snake_length": 1,  "max_step_limit": 200,  "rewards": {    "timestep": 0,    "good_fruit": 6,    "bad_fruit": -1,    "died": 0,    "lava": -5  }}');
 
 var dots = json_file.initial_snake_length;
 
@@ -134,14 +134,14 @@ var leftDirection = false;
 var rightDirection = true;
 var upDirection = false;
 var downDirection = false;
-var go = false;
+var go = true;
 
 const DELAY = 75;
 const C_HEIGHT = 700;
 const C_WIDTH = 700;
 const DOT_SIZE = C_HEIGHT / json_file.field[0].length;
 const MAX_DOTS = json_file.field[0].length * json_file.field.length
-const INC_VAL = 20
+const INC_VAL = 10
 
 //keyboard bindings for the arrow keys
 const LEFT_KEY = 37;
@@ -155,6 +155,7 @@ var y = new Array(MAX_DOTS);
 var orientation = new Array(MAX_DOTS);    // 0: n, 1: w, 2: s, 3: e
 var map = new Array(json_file.field.length)
 var accident_tracker = new Array(json_file.field.length)
+var next_transition = [1.0, 0.0];
 
 for (var i = 0; i < json_file.field.length; i++) {
     map[i] = json_file.field[i].split("");
@@ -168,10 +169,11 @@ var transition = new Array(MAX_DOTS)
 
 for (var i = 0; i < transition.length; i++) {
     if (i == 0)
-        transition[i] = [0, 0];
+        transition[i] = [1, 0];
     else
         transition[i] = [1, 0];
 }
+
 
 
 function init() {
@@ -193,7 +195,9 @@ function init() {
     doDrawing();
 
     //start the game after everything's loaded up
+    //
     setTimeout("gameCycle()", DELAY);
+    
 }    
 
 function loadImages() {
@@ -556,8 +560,27 @@ function reset() {
     //update timestep
     score += json_file.rewards.timestep;
     cycles += 1;
-
-    transition[0] = [0, 0]
+    if (next_transition[0] == -1) {      
+        leftDirection = true;
+        upDirection = false;
+        downDirection = false;   
+    }
+    else if (next_transition[0] == 1) {
+        rightDirection = true;
+        upDirection = false;
+        downDirection = false;
+    }
+    else if (next_transition[1] == -1) {
+        upDirection = true;
+        rightDirection = false;
+        leftDirection = false;
+    }
+    else if (next_transition[1] == 1) {
+        downDirection = true;        
+        rightDirection = false;
+        leftDirection = false;
+    }        
+    transition[0] = [Math.sign(next_transition[0]), Math.sign(next_transition[1])]
 }
 
 function update_increments() {
@@ -597,7 +620,7 @@ function move() {
     if (transition[0][0] > 0) {
         orientation[0] = 3;
         update_increments();
-        if (Math.abs(transition[0][0]) > DOT_SIZE) {
+        if (Math.abs(transition[0][0]) > DOT_SIZE ) {
             reset();
             x[0] += DOT_SIZE;
         }
@@ -617,7 +640,7 @@ function move() {
     if (transition[0][1] > 0) {
         orientation[0] = 2;
         update_increments();
-        if (Math.abs(transition[0][1]) > DOT_SIZE) {
+        if (Math.abs(transition[0][1]) > DOT_SIZE ) {
             reset();
             y[0] += DOT_SIZE;
         }
@@ -636,6 +659,27 @@ function checkCollision() {
     //make sure to check if in game so as to not violate array ranges
     var tempX = x[0] / DOT_SIZE;
     var tempY = y[0] / DOT_SIZE;
+           
+    if (tempX == 1 && leftDirection || tempX == json_file.field[0].length - 2 && rightDirection){
+        //console.log('1',tempX,tempY) 
+        transition[0][0] = 0;
+        
+        leftDirection = false;
+        rightDirection = false;
+        if (tempY < json_file.field[0].length / 2) { transition[0][1] = 1; downDirection =true;}
+        else{  transition[0][1] = -1; upDirection=true;}
+        next_transition = transition[0];
+    }
+    
+    if (tempY == 1 && upDirection || tempY == json_file.field[0].length - 2 && downDirection){
+        //console.log('2',tempX,tempY) 
+        transition[0][1] = 0;
+        upDirection = false;
+        downDirection = false;
+        if ( tempX < json_file.field[0].length / 2) {  transition[0][0] = 1; rightDirection = true;}
+        else{ transition[0][0] = -1; leftDirection = true;}
+        next_transition = transition[0];
+    }
 
     if (map[tempX][tempY] == 'C' && accident_tracker[tempX][tempY] == 0) {
         //bus is on a car tile
@@ -650,7 +694,8 @@ function checkCollision() {
     else if (map[tempX][tempY] == '#' && accident_tracker[tempX][tempY] == 0) {
         //bus hit a forest
         score += json_file.rewards.died;
-        accident_tracker[tempX][tempY] = 7;
+        accident_tracker[tempX][tempY] = '#';
+        
     }
 
     //iterate thorugh the entire map to check if any can be removed due to fade time elapsing
@@ -670,10 +715,12 @@ function checkCollision() {
 function gameCycle() {
     if (cycles < json_file.max_step_limit) {
         doDrawing();
-        if (go || transition[0][0] == 0 || transition[0][1] == 0) {
-            move();
-            checkCollision();
-        }
+        //if (go || transition[0][0] == 0 || transition[0][1] == 0) {
+        
+        move();
+        checkCollision();
+        
+        //}
         setTimeout("gameCycle()", DELAY);
     }
     else {
@@ -683,57 +730,33 @@ function gameCycle() {
 }
 
 onkeydown = function(e) {
-    
+    // Change direction of the bus when key is pressed
+
     var key = e.keyCode;
-    
+    var tempX = x[0] / DOT_SIZE;
+    var tempY = y[0] / DOT_SIZE;
+    go = true;
+    //console.log(tempX, tempY)
     //get key input to make the bus move in a certain direction
-    if ((key == LEFT_KEY) && (!rightDirection)) {
-        leftDirection = true;
-        upDirection = false;
-        downDirection = false;
-        go = true;
-        if (0 < x[0]) {
-            if (transition[0][0] == 0 && transition[0][1] == 0) {
-                transition[0] = [-1, 0]
-            }
-        } 
+    if ((key == LEFT_KEY) && (!rightDirection) && (tempX > 1)) {      
+        next_transition =  [-1, 0];    
     }
-    else if ((key == RIGHT_KEY) && (!leftDirection)) {
-        rightDirection = true;
-        upDirection = false;
-        downDirection = false;
-        go = true;
-        if (x[0] < C_WIDTH - DOT_SIZE) {
-            if (transition[0][0] == 0 && transition[0][1] == 0) {
-                transition[0] = [1, 0]
-            }
-        }
+    else if ((key == RIGHT_KEY) && (!leftDirection) && (tempX < json_file.field[0].length -2)) {
+        next_transition =  [1, 0];
     }
-    else if ((key == UP_KEY) && (!downDirection)) {
-        upDirection = true;
-        rightDirection = false;
-        leftDirection = false;
-        go = true;
-        if (y[0] > 0) {
-            if (transition[0][0] == 0 && transition[0][1] == 0) {
-                transition[0] = [0, -1]
-            }
-        }
+    else if ((key == UP_KEY) && (!downDirection) && (tempY > 1)) {
+        next_transition =  [0, -1];
     }
-    else if ((key == DOWN_KEY) && (!upDirection)) {
-        downDirection = true;        
-        rightDirection = false;
-        leftDirection = false;
-        go = true;
-        if (y[0] < C_HEIGHT - DOT_SIZE) {
-            if (transition[0][0] == 0 && transition[0][1] == 0) {
-                transition[0] = [0, 1]
-            }
-        }
+    else if ((key == DOWN_KEY) && (!upDirection) && (tempY < json_file.field[0].length -2)) {
+        next_transition =  [0, 1];
+
     }        
-};    
+};   
+
+
 
 //Makes sure the bus doesn't move if a key isn't pressed down
-onkeyup = function(e) {
-    go = false;
-};
+// Bus moves on its own
+//onkeyup = function(e) {
+//    go = true;
+//};
