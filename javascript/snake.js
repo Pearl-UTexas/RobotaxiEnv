@@ -1,5 +1,4 @@
 //modified from http://zetcode.com/javascript/snake/
-
 //First read in the contents of the right JSON file to create the
 //right initial state
 //alert("hello world");
@@ -136,13 +135,13 @@ var rightDirection = true;
 var upDirection = false;
 var downDirection = false;
 var go = false;
-var inGame = true;
 
-const DELAY = 140;
+const DELAY = 75;
 const C_HEIGHT = 700;
 const C_WIDTH = 700;
 const DOT_SIZE = C_HEIGHT / json_file.field[0].length;
 const MAX_DOTS = json_file.field[0].length * json_file.field.length
+const INC_VAL = 20
 
 //keyboard bindings for the arrow keys
 const LEFT_KEY = 37;
@@ -163,6 +162,15 @@ for (var i = 0; i < json_file.field.length; i++) {
     for (var j = 0; j < json_file.field[0].length; j++) {
         accident_tracker[i][j] = 0;
     }
+}
+
+var transition = new Array(MAX_DOTS)
+
+for (var i = 0; i < transition.length; i++) {
+    if (i == 0)
+        transition[i] = [0, 0];
+    else
+        transition[i] = [1, 0];
 }
 
 
@@ -466,19 +474,23 @@ function doDrawing() {
     else
         ctx.fillText('$' + score, C_WIDTH + 200, C_HEIGHT / 2 + 150)
 
+    ctx.fillText('Time', C_WIDTH + 200, C_HEIGHT / 2 + 225)
+    ctx.font = 'normal bold 24px serif';
+    ctx.fillText(cycles + "/" + json_file.max_step_limit, C_WIDTH + 200, C_HEIGHT / 2 + 260)
+
     //render all of the bus
     for (var z = dots - 1; z >= 0; z--) {
         if (orientation[z] == 0) {
-            ctx.drawImage(auto_bus_north, x[z], y[z])
+            ctx.drawImage(auto_bus_north, x[z] + transition[z][0], y[z] + transition[z][1])
         }
         if (orientation[z] == 1) {
-            ctx.drawImage(auto_bus_west, x[z], y[z])
+            ctx.drawImage(auto_bus_west,  x[z] + transition[z][0], y[z] + transition[z][1])
         }
         if (orientation[z] == 2) {
-            ctx.drawImage(auto_bus_south, x[z], y[z])
+            ctx.drawImage(auto_bus_south, x[z] + transition[z][0], y[z] + transition[z][1])
         }
         if (orientation[z] == 3) {
-            ctx.drawImage(auto_bus_east, x[z], y[z])
+            ctx.drawImage(auto_bus_east,  x[z] + transition[z][0], y[z] + transition[z][1])
         }
     }
 
@@ -512,23 +524,6 @@ function doDrawing() {
     
 }
 
-function gameOver() {
-    //render the gameover scene
-    ctx.clearRect(0, 0, C_WIDTH * 2, C_HEIGHT);
-    ctx.fillStyle = 'black';
-    ctx.textBaseline = 'middle'; 
-    ctx.textAlign = 'center'; 
-    ctx.font = 'normal bold 50px serif';
-
-    ctx.fillText('Game over', C_WIDTH, C_HEIGHT/2);
-
-    //basically putting the minus sign in the right spot
-    if (score < 0)
-        ctx.fillText('Score: -$' + (-1 * score), C_WIDTH, C_HEIGHT/2 + 45);
-    else
-        ctx.fillText('Score: $' + score, C_WIDTH, C_HEIGHT/2 + 45);
-}
-
 function timestepExceeded() {
     //render the ran out of steps scene
     ctx.clearRect(0, 0, C_WIDTH * 2, C_HEIGHT);
@@ -546,113 +541,140 @@ function timestepExceeded() {
 
 }
 
-function move() {
-    //update timestep
-    cycles += 1;
-    score += json_file.rewards.timestep;
+function reset() {
 
     //every sprite aside from the first dot gets updated by a frame
     for (var z = dots; z > 0; z--) {
         x[z] = x[(z - 1)];
         y[z] = y[(z - 1)];
         orientation[z] = orientation[(z - 1)];
+        transition[z] = transition[(z - 1)];
+        var temp_sum = Math.abs(transition[z][0] + transition[z][1]);
+        transition[z] = [transition[z][0] * (1 / temp_sum), transition[z][1] * (1 / temp_sum)]
     }
 
-    //update the head of the snake (both position and orientation)
-    if (leftDirection) {
-        x[0] -= DOT_SIZE;
+    //update timestep
+    score += json_file.rewards.timestep;
+    cycles += 1;
+
+    transition[0] = [0, 0]
+}
+
+function update_increments() {
+    for (var i = 0; i < dots; i++) {
+        //going up
+        if (transition[i][0] == 0 && transition[i][1] < 0) {
+            transition[i][1] -= INC_VAL;
+        }
+        //going down
+        if (transition[i][0] == 0 && transition[i][1] > 0) {
+            transition[i][1] += INC_VAL;
+        }
+        //going to the right
+        if (transition[i][0] > 0 && transition[i][1] == 0) {
+            transition[i][0] += INC_VAL;
+        }
+        //going to the left
+        if (transition[i][0] < 0 && transition[i][1] == 0) {
+            transition[i][0] -= INC_VAL;
+        }
+    }
+}
+
+function move() {
+    //check if the snake is within the bounds to move a step in a given direction
+    //going to the left
+    if (transition[0][0] < 0) {
         orientation[0] = 1;
+        update_increments();
+        if (Math.abs(transition[0][0]) > DOT_SIZE) {
+            reset();
+            x[0] -= DOT_SIZE;
+        }
     }
 
-    if (rightDirection) {
-        x[0] += DOT_SIZE;
+    //going to the right
+    if (transition[0][0] > 0) {
         orientation[0] = 3;
+        update_increments();
+        if (Math.abs(transition[0][0]) > DOT_SIZE) {
+            reset();
+            x[0] += DOT_SIZE;
+        }
     }
 
-    if (upDirection) {
-        y[0] -= DOT_SIZE;
+    //going up
+    if (transition[0][1] < 0) {
         orientation[0] = 0;
+        update_increments();
+        if (Math.abs(transition[0][1]) > DOT_SIZE) {
+            reset();
+            y[0] -= DOT_SIZE;
+        }
     }
 
-    if (downDirection) {
-        y[0] += DOT_SIZE;
+    //going down
+    if (transition[0][1] > 0) {
         orientation[0] = 2;
+        update_increments();
+        if (Math.abs(transition[0][1]) > DOT_SIZE) {
+            reset();
+            y[0] += DOT_SIZE;
+        }
     }
+
 }    
 
 function checkCollision() {
     for (var z = dots; z > 0; z--) {
 	    //z > 4 check is present to check if it's even possible for a collision to happen
         if ((z > 4) && (x[0] == x[z]) && (y[0] == y[z])) {
-            inGame = false;
+            cycles = json_file.max_step_limit;
         }
-    }
-
-    //if the bus goes out of bounds, it's no longer in the game
-    if (y[0] >= C_HEIGHT) {
-        inGame = false;
-    }
-
-    if (y[0] < 0) {
-       inGame = false;
-    }
-
-    if (x[0] >= C_WIDTH) {
-      inGame = false;
-    }
-
-    if (x[0] < 0) {
-      inGame = false;
     }
 
     //make sure to check if in game so as to not violate array ranges
-    if (inGame) {
-        var tempX = x[0] / DOT_SIZE;
-        var tempY = y[0] / DOT_SIZE;
+    var tempX = x[0] / DOT_SIZE;
+    var tempY = y[0] / DOT_SIZE;
 
-        if (map[tempX][tempY] == 'C' && accident_tracker[tempX][tempY] == 0) {
-            //bus is on a car tile
-            score += json_file.rewards.bad_fruit;
-            accident_tracker[tempX][tempY] = 7;         //7 denotes the amount of cycles for this entity to fade away
-        }
-        else if (map[tempX][tempY] == 'P' && accident_tracker[tempX][tempY] == 0) {
-            //bus picked up a person
-            score += json_file.rewards.good_fruit;
-            accident_tracker[tempX][tempY] = 7;
-        }
-        else if (map[tempX][tempY] == '#' && accident_tracker[tempX][tempY] == 0) {
-            //bus hit a forest
-            score += json_file.rewards.died;
-            accident_tracker[tempX][tempY] = 7;
-        }
+    if (map[tempX][tempY] == 'C' && accident_tracker[tempX][tempY] == 0) {
+        //bus is on a car tile
+        score += json_file.rewards.bad_fruit;
+        accident_tracker[tempX][tempY] = 7;         //7 denotes the amount of cycles for this entity to fade away
+    }
+    else if (map[tempX][tempY] == 'P' && accident_tracker[tempX][tempY] == 0) {
+        //bus picked up a person
+        score += json_file.rewards.good_fruit;
+        accident_tracker[tempX][tempY] = 7;
+    }
+    else if (map[tempX][tempY] == '#' && accident_tracker[tempX][tempY] == 0) {
+        //bus hit a forest
+        score += json_file.rewards.died;
+        accident_tracker[tempX][tempY] = 7;
+    }
 
-        //iterate thorugh the entire map to check if any can be removed due to fade time elapsing
-        for (var i = 0; i < map.length; i++) {
-            for (var j = 0; j < map[0].length; j++) {
-                if (accident_tracker[i][j] != 0) {
-                    if (accident_tracker[i][j] == 1) {
-                        map[i][j] = '.';
-                    }
-                    accident_tracker[i][j] -= 1;
+    //iterate thorugh the entire map to check if any can be removed due to fade time elapsing
+    for (var i = 0; i < map.length; i++) {
+        for (var j = 0; j < map[0].length; j++) {
+            if (accident_tracker[i][j] != 0) {
+                if (accident_tracker[i][j] == 1) {
+                    map[i][j] = '.';
                 }
+                accident_tracker[i][j] -= 1;
             }
         }
-
     }
 
 }
 
 function gameCycle() {
-    if (inGame && cycles < json_file.max_step_limit) {
+    if (cycles < json_file.max_step_limit) {
         doDrawing();
-        if (go)
+        if (go || transition[0][0] == 0 || transition[0][1] == 0) {
             move();
             checkCollision();
+        }
         setTimeout("gameCycle()", DELAY);
-    }
-    else if (!inGame) {
-        // Crashed
-        gameOver();        
     }
     else {
         // Timestep is too much
@@ -670,24 +692,44 @@ onkeydown = function(e) {
         upDirection = false;
         downDirection = false;
         go = true;
+        if (0 < x[0]) {
+            if (transition[0][0] == 0 && transition[0][1] == 0) {
+                transition[0] = [-1, 0]
+            }
+        } 
     }
     else if ((key == RIGHT_KEY) && (!leftDirection)) {
         rightDirection = true;
         upDirection = false;
         downDirection = false;
         go = true;
+        if (x[0] < C_WIDTH - DOT_SIZE) {
+            if (transition[0][0] == 0 && transition[0][1] == 0) {
+                transition[0] = [1, 0]
+            }
+        }
     }
     else if ((key == UP_KEY) && (!downDirection)) {
         upDirection = true;
         rightDirection = false;
         leftDirection = false;
         go = true;
+        if (y[0] > 0) {
+            if (transition[0][0] == 0 && transition[0][1] == 0) {
+                transition[0] = [0, -1]
+            }
+        }
     }
     else if ((key == DOWN_KEY) && (!upDirection)) {
         downDirection = true;        
         rightDirection = false;
         leftDirection = false;
         go = true;
+        if (y[0] < C_HEIGHT - DOT_SIZE) {
+            if (transition[0][0] == 0 && transition[0][1] == 0) {
+                transition[0] = [0, 1]
+            }
+        }
     }        
 };    
 
