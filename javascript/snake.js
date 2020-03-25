@@ -40,6 +40,9 @@ var json_file = JSON.parse('{  "field": [    "########",    "#......#",    "#...
 
 var dots = json_file.initial_snake_length;
 
+var NUM_OBJ = 2;    //max number of objects in a file
+var adding_obj = []
+
 var canvas;
 var ctx;
 
@@ -142,6 +145,8 @@ const C_WIDTH = 700;
 const DOT_SIZE = C_HEIGHT / json_file.field[0].length;
 const MAX_DOTS = json_file.field[0].length * json_file.field.length
 const INC_VAL = 10
+const COLLISION_TIME = 7;
+const RANDGEN_TIME = -1 * (COLLISION_TIME + 3);
 
 //keyboard bindings for the arrow keys
 const LEFT_KEY = 37;
@@ -183,22 +188,53 @@ function init() {
     //get all of the images loaded
     loadImages();
 
+    var temp = [['C', 0], ['P', 0], ['B', 0]]
+
     //Find the start of the snake and create initialize it at the given x,y
     for (var i = 0; i < json_file.field[0].length; i++) {
-	    for (var j = 0; j < json_file.field.length; j++) {
-	        if (json_file.field[i].charAt(j) == 'S') {
-                createSnake(i * DOT_SIZE, j * DOT_SIZE);
-	        }
+	for (var j = 0; j < json_file.field.length; j++) {
+	    if (json_file.field[i].charAt(j) == 'S') {
+		map[i][j] = '.';
+		createSnake(i * DOT_SIZE, j * DOT_SIZE);
 	    }
+	    else if (json_file.field[i].charAt(j) != '.' && json_file.field[i].charAt(j) != '#') {
+		for (var k = 0; k < temp.length; k++) {
+		    if (temp[k][0] == json_file.field[i].charAt(j)) {
+			temp[k][1] += 1;
+		    }
+		}
+	    }
+	}
+    }
+
+    //check correct amount of objects present and if not, create them
+    for (var i = 0; i < temp.length; i++) {
+	for (var j = temp[i][1]; j < NUM_OBJ; j++) {
+	    random_generate(temp[i][0]);
+	}
     }
 
     doDrawing();
 
     //start the game after everything's loaded up
-    //
     setTimeout("gameCycle()", DELAY);
+}
+
+function random_generate(character) {
+    var bool = false;
+
+    //loop until empty set found
+    while (!bool) {
+	var rand1 = Math.floor(Math.random() * Math.floor(json_file.field[0].length));
+	var rand2 = Math.floor(Math.random() * Math.floor(json_file.field.length));
+	if (map[rand1][rand2] == '.') {
+	    map[rand1][rand2] = character;
+	    bool = true;
+	}
+    }
     
-}    
+}
+
 
 function loadImages() {
     auto_bus_east = new Image();
@@ -508,16 +544,19 @@ function doDrawing() {
                     ctx.drawImage(forest, i * DOT_SIZE, j * DOT_SIZE);
                 }
                 if (map[i][j] == 'P') {
-                    if (accident_tracker[i][j] == 0)
+                    if (accident_tracker[i][j] <= 0)
                         ctx.drawImage(man, i * DOT_SIZE, j * DOT_SIZE);
                     else
                         ctx.drawImage(dollar, i * DOT_SIZE, j * DOT_SIZE);
                 }
-                if (map[i][j] == 'o') {
-                    ctx.drawImage(road_block, i * DOT_SIZE, j * DOT_SIZE);
+                if (map[i][j] == 'B') {
+		    if (accident_tracker[i][j] <= 0)
+			ctx.drawImage(road_block, i * DOT_SIZE, j * DOT_SIZE);
+		    else
+			ctx.drawImage(road_block_broken, i * DOT_SIZE, j * DOT_SIZE);
                 }
                 if (map[i][j] == 'C') {
-                    if (accident_tracker[i][j] == 0)
+                    if (accident_tracker[i][j] <= 0)
                         ctx.drawImage(purple_car, i * DOT_SIZE, j * DOT_SIZE);
                     else
                         ctx.drawImage(broken_purple_car, i * DOT_SIZE, j * DOT_SIZE);
@@ -683,32 +722,51 @@ function checkCollision() {
 
     if (map[tempX][tempY] == 'C' && accident_tracker[tempX][tempY] == 0) {
         //bus is on a car tile
-        score += json_file.rewards.bad_fruit;
-        accident_tracker[tempX][tempY] = 7;         //7 denotes the amount of cycles for this entity to fade away
+        score += json_file.rewards.lava;
+        accident_tracker[tempX][tempY] = COLLISION_TIME;         //7 denotes the amount of cycles for this entity to fade away
+	adding_obj.push([RANDGEN_TIME, 'C']);
     }
     else if (map[tempX][tempY] == 'P' && accident_tracker[tempX][tempY] == 0) {
-        //bus picked up a person
-        score += json_file.rewards.good_fruit;
-        accident_tracker[tempX][tempY] = 7;
-    }
+        //bus picked up a person			
+        score += json_file.rewards.good_fruit;		
+        accident_tracker[tempX][tempY] = COLLISION_TIME;
+	adding_obj.push([RANDGEN_TIME, 'P']);			
+    }							
+    else if (map[tempX][tempY] == 'B' && accident_tracker[tempX][tempY] == 0) {
+        //bus ran into a road stop		
+        score += json_file.rewards.bad_fruit;	
+        accident_tracker[tempX][tempY] = COLLISION_TIME;	
+	adding_obj.push([RANDGEN_TIME, 'B'])		
+    }						
     else if (map[tempX][tempY] == '#' && accident_tracker[tempX][tempY] == 0) {
         //bus hit a forest
         score += json_file.rewards.died;
-        accident_tracker[tempX][tempY] = '#';
-        
+        accident_tracker[tempX][tempY] = COLLISION_TIME;
     }
 
     //iterate thorugh the entire map to check if any can be removed due to fade time elapsing
     for (var i = 0; i < map.length; i++) {
         for (var j = 0; j < map[0].length; j++) {
             if (accident_tracker[i][j] != 0) {
-                if (accident_tracker[i][j] == 1) {
+                if (accident_tracker[i][j] == 1)
                     map[i][j] = '.';
-                }
-                accident_tracker[i][j] -= 1;
+		accident_tracker[i][j] -= 1;
             }
         }
     }
+
+    var temp_array = []
+    
+    for (var i = 0; i < adding_obj.length; i++) {
+	adding_obj[i][0] += 1;
+	if (adding_obj[i][0] == 0) {
+	    random_generate(adding_obj[i][1]);
+	}
+	else {
+	    temp_array.push(adding_obj[i]);
+	}
+    }
+    adding_obj = temp_array;
 
 }
 
