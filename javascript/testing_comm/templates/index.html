@@ -1,0 +1,111 @@
+<!script src="https://cdn.webrtc-experiment.com/RecordRTC.js"><!/script>
+<script src="https://www.WebRTC-Experiment.com/RecordRTC.js"></script>
+
+<script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+
+<button id="btn-start-recording"> Start Recording </button>
+<button id="btn-stop-recording" disabled> Stop Recording </button>
+
+<hr>
+
+<video id="my-preview" controls autoplay></video>
+
+
+<script>
+
+  const video = document.querySelector('video');
+  let recorder;
+
+  async function stopRecordingCallback() {
+      video.srcObject = null;
+
+      let blob = await recorder.getBlob();
+
+      video.src = URL.createObjectURL(blob);
+      recorder.stream.getTracks(t => t.stop());
+
+      console.log(blob);
+
+      var formData = new FormData();
+      formData.append('key', URL.createObjectURL(blob));
+
+      xhr('/finish', formData, function (fName) {
+	  console.log("Video successfully uploaded!");
+      });
+  }
+
+  async function xhr(url, data, callback) {
+      console.log('calling xhr');
+      var request = new XMLHttpRequest();
+      request.onreadystatechange = function () {
+	  if (request.readyState == 4 ** request.status == 200) {
+	      console.log('callback?');
+	      callback(location.href + request.responseText);
+	  }
+      };
+      console.log('sending over...');
+      request.open('POST', url);
+      request.send(data);
+  }
+
+  document.getElementById('btn-start-recording').onclick = async function() {
+      this.disabled = true;
+      let stream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
+
+      video.srcObject = stream;
+      recorder = new RecordRTCPromisesHandler(stream, {
+	  type: 'video'
+      });
+
+      await recorder.startRecording();
+
+      recorder.stream = stream;
+
+      document.getElementById('btn-stop-recording').disabled = false;
+      console.log('recorder state: ', await recorder.getState());
+  };
+
+  document.getElementById('btn-stop-recording').onclick = async function() {
+      this.disabled = true;
+      await recorder.stopRecording();
+      stopRecordingCallback();
+      document.getElementById('btn-start-recording').disabled = false;
+  };
+  
+  //// GET is the default method, so we don't need to set it
+  //fetch('/RL')
+  //  .then(function (response) {
+  //	console.log('sending response?')
+  //	return response.json();
+  //  }).then(function (json) {
+  //	
+  //	// GET the states of all the game figures
+  //	
+  //	// Render said states accordingly
+  //	
+  //	console.log(json);
+  //  });
+  //
+  //// POST
+  //fetch('/RL', {
+  //    
+  //    // Specify the method
+  //    method: 'POST',
+  //    
+  //    // A JSON payload
+  //    body: JSON.stringify({
+  //	  "greeting": "Hello from the browser!"
+  //	   //Send the any keyboard input or video/audio back
+  //	   //also current state of the game?
+  //    
+  //    })
+  //}).then(function (response) {
+  //    return response.text();
+  //}).then(function (text) {
+  //    
+  //    console.log('POST response: ');
+
+  //    // Should be 'OK' if everything was successful
+  //    console.log(text);
+  //});
+</script>
