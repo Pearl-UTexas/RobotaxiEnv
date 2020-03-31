@@ -27,7 +27,8 @@
       console.log(blob);
 
       var formData = new FormData();
-      formData.append('key', URL.createObjectURL(blob));
+      //formData.append('video-filename', 'TEST.webm');
+      formData.append('video-blob', blob, 'test.webm');
 
       xhr('/finish', formData, function (fName) {
 	  console.log("Video successfully uploaded!");
@@ -44,6 +45,7 @@
 	  }
       };
       console.log('sending over...');
+      console.log(data);
       request.open('POST', url);
       request.send(data);
   }
