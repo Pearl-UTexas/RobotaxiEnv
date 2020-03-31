@@ -12,7 +12,7 @@
 
 
 <script>
-
+  
   const video = document.querySelector('video');
   let recorder;
 
@@ -27,7 +27,6 @@
       console.log(blob);
 
       var formData = new FormData();
-      //formData.append('video-filename', 'TEST.webm');
       formData.append('video-blob', blob, 'test.webm');
 
       xhr('/finish', formData, function (fName) {
@@ -50,8 +49,12 @@
       request.send(data);
   }
 
+  // start recording after clicking (reccomended to not play around with this too much)
   document.getElementById('btn-start-recording').onclick = async function() {
+      // update this button
       this.disabled = true;
+
+      //specify the stream types wanted
       let stream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
 
       video.srcObject = stream;
@@ -63,16 +66,20 @@
 
       recorder.stream = stream;
 
+      // update other button
       document.getElementById('btn-stop-recording').disabled = false;
-      console.log('recorder state: ', await recorder.getState());
   };
 
+  // stop recording after clicking (reccomended to not play around with this too much)
   document.getElementById('btn-stop-recording').onclick = async function() {
       this.disabled = true;
       await recorder.stopRecording();
+      // send the information back
       stopRecordingCallback();
       document.getElementById('btn-start-recording').disabled = false;
   };
+
+  // Note: XMLHTTPRequests and fetch both work. below is fetch
   
   //// GET is the default method, so we don't need to set it
   //fetch('/RL')
@@ -106,8 +113,5 @@
   //}).then(function (text) {
   //    
   //    console.log('POST response: ');
-
-  //    // Should be 'OK' if everything was successful
-  //    console.log(text);
   //});
 </script>

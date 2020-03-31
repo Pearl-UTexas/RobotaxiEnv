@@ -37,10 +37,11 @@ def learning():
 
 @app.route('/finish', methods=['POST'])
 def finish():
-    print('finish method on python server')
+
     # Store the video file recieved
     if request.method == 'POST':
 
+        # Connect to the localhost database
         mydb = mysql.connector.connect(
             host="localhost",
             db="robotaxi",
@@ -48,22 +49,19 @@ def finish():
             password="Mturk$35@"
         )
 
-        print('Connected to database')
-
+        # Get the correct data to send to database
         cursor = mydb.cursor()
         sql_insert_blob_query = """ INSERT INTO player (player_id, video) VALUES (%s, %s)"""
 
         player_id = random.randint(10000, 99999)
         video_file = request.files['video-blob']
-        print(os.path.join(app.config['UPLOAD_FOLDER'], 'test.webm'))
-        video_file.save(os.path.join(app.config['UPLOAD_FOLDER'], 'test.webm'))
-        print('Got video file!')
-        
         #insert_blob_tuple = (player_id, video_file)
         #result = cursor.execute(sql_insert_blob_query, insert_blob_tuple)
+        video_file.save(os.path.join(app.config['UPLOAD_FOLDER'], 'test.webm'))
+        
         #mydb.commit()
-        #print("Image and file inserted successfully as a BLOB into player")
 
+        # if the connection exists, end the connection
         if mydb.is_connected():
             cursor.close()
             mydb.close()
