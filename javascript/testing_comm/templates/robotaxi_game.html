@@ -1,0 +1,136 @@
+<script src="https://www.WebRTC-Experiment.com/RecordRTC.js"></script>
+
+<script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+
+<hr>
+
+<video id="my-preview" controls autoplay></video>
+
+
+<script>
+  
+  const video = document.querySelector('video');
+  let recorder;
+
+  async function stopRecordingCallback() {
+      video.srcObject = null;
+
+      let blob = await recorder.getBlob();
+
+      video.src = URL.createObjectURL(blob);
+      recorder.stream.getTracks(t => t.stop());
+
+      console.log(blob);
+
+      var formData = new FormData();
+      formData.append('video-blob', blob);
+
+      xhr('/finish', formData, function (fName) {
+	  console.log("Video successfully uploaded!");
+      });
+  }
+
+  async function xhr(url, data, callback) {
+      console.log('calling xhr');
+      var request = new XMLHttpRequest();
+      request.onreadystatechange = function () {
+	  if (request.readyState == 4 ** request.status == 200) {
+	      callback(location.href + request.responseText);
+	  }
+      };
+      request.open('POST', url);
+      request.send(data);
+  }
+
+  // start recording after clicking (reccomended to not play around with this too much)
+  async function start_recording_main() {
+
+      //specify the stream types wanted
+      let stream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
+
+      video.srcObject = stream;
+      recorder = new RecordRTCPromisesHandler(stream, {
+	  type: 'audio'
+      });
+
+      await recorder.startRecording();
+
+      recorder.stream = stream;
+  };
+
+  // stop recording after clicking (reccomended to not play around with this too much)
+  async function stop_recording_main() {
+      await recorder.stopRecording();
+      // send the information back
+      stopRecordingCallback();
+  };
+
+  var C_WIDTH, C_HEIGHT, score, cycles, max_cycles;
+
+  async function get_initial_values() {
+      return fetch('/init')
+	  .then(function(response) {
+  	      return response.json();
+	  }).then(function (json) {
+  	      console.log(json);
+  	      C_WIDTH = json.C_WIDTH;
+  	      C_HEIGHT = json.C_HEIGHT;
+  	      score = json.score;
+  	      cycles = json.cycles;
+  	      max_cycles = json.max_cycle;
+  	      console.log('max_cycles: ' + max_cycles);
+	  });
+  };
+
+  async function get_render_items() {
+      // GET is the default method, so we don't need to set it
+      return fetch('/render')
+  	      .then(function (response) {
+  		  return response.json();
+  	      }).then(function (json) {
+  		  
+  		  // GET the states of all the game figures
+  		  // Render said states accordingly
+  	      });
+  }
+
+  async function send_inputs() {
+      // POST
+      return fetch('/inputs', {
+  	      // Specify the method
+  	      method: 'POST',
+  	      
+  	      // A JSON payload
+  	      body: JSON.stringify({
+  		  "up": 0,
+  		  "left": 0,
+  		  "down": 0,
+  		  "right": 0
+  		  //Send the any keyboard input or video/audio back
+  		  //also current state of the game?
+  		  
+  	      })
+	  }).then(function (response) {
+  	      return response.text();
+	  }).then(function (text) {
+  	      
+	  });
+
+  }
+
+  async function run_game() {
+      await get_initial_values();
+      while (cycles < max_cycles) {
+
+	  await get_render_items();
+
+	  await send_inputs();
+
+	  cycles += 1;
+      }
+  }
+
+  run_game();
+  
+
+</script>
