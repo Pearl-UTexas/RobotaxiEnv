@@ -1,16 +1,21 @@
+<html>
+<head>
+<title>RoboTaxi</title>    
+<canvas id="myCanvas" width="1400" height="700">
+</canvas>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
 <script src="https://www.WebRTC-Experiment.com/RecordRTC.js"></script>
-
 <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
-
-<hr>
-
-<video id="my-preview" controls autoplay></video>
-
-
 <script>
   
   const video = document.querySelector('video');
   let recorder;
+  var canvas = document.getElementById('myCanvas');
+  var ctx = canvas.getContext('2d');
+
+  //ctx.globalCompositeOperation = 'destination-over'
+  ctx.fillStyle = "gray";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   async function stopRecordingCallback() {
       video.srcObject = null;
@@ -65,20 +70,35 @@
       stopRecordingCallback();
   };
 
-  var C_WIDTH, C_HEIGHT, score, cycles, max_cycles;
+
+  //game variables and constants
+  var C_WIDTH, C_HEIGHT, score, cycles, max_cycles, DOT_SIZE, map_size_x, map_size_y;
+  var leftDirection = false;
+  var rightDirection = true;
+  var upDirection = false;
+  var downDirection = false;
+  var finished = false;
+  var next_transition = [1, 0];
+  var x, y;
+  const LEFT_KEY = 37;
+  const RIGHT_KEY = 39;
+  const UP_KEY = 38;
+  const DOWN_KEY = 40;
 
   async function get_initial_values() {
       return fetch('/init')
 	  .then(function(response) {
   	      return response.json();
 	  }).then(function (json) {
-  	      console.log(json);
   	      C_WIDTH = json.C_WIDTH;
   	      C_HEIGHT = json.C_HEIGHT;
   	      score = json.score;
   	      cycles = json.cycles;
   	      max_cycles = json.max_cycle;
-  	      console.log('max_cycles: ' + max_cycles);
+	      x = json.bus.x;
+	      y = json.bus.y;
+	      map_size_x = json.map_size_x
+	      map_size_y = json.map_size_y
 	  });
   };
 
@@ -88,9 +108,51 @@
   	      .then(function (response) {
   		  return response.json();
   	      }).then(function (json) {
-  		  
+		  //update info based on json
+		  x = json.bus.x;
+		  y = json.bus.y;
+		  finished = json.finished;
+		  
   		  // GET the states of all the game figures
   		  // Render said states accordingly
+
+		  ctx.clearRect(0, 0, C_WIDTH * 2, C_HEIGHT);
+		  ctx.fillStyle = 'black';
+		  ctx.textBaseline = 'middle'; 
+		  ctx.textAlign = 'center'; 
+
+		  //add font functionality later
+		  ctx.font = 'normal bold 40px serif';
+
+		  //create basic rendering of the right side of the screen
+		  ctx.fillText('EARNINGS', C_WIDTH + 200, C_HEIGHT / 2 + 100)
+
+		  ctx.fillStyle = '#A0522D';
+		  ctx.fillRect(C_WIDTH + 138, C_HEIGHT / 2 + 125, 125, 50)
+
+		  ctx.fillStyle = 'black';
+		  if (score < 0)
+		      ctx.fillText('-$' + (-1 * score), C_WIDTH + 200, C_HEIGHT / 2 + 150)
+		  else
+		      ctx.fillText('$' + score, C_WIDTH + 200, C_HEIGHT / 2 + 150)
+
+		  ctx.fillText('Time', C_WIDTH + 200, C_HEIGHT / 2 + 225)
+		  ctx.font = 'normal bold 24px serif';
+		  ctx.fillText(cycles + "/" + max_cycles, C_WIDTH + 200, C_HEIGHT / 2 + 260)
+
+		  if (json.bus.orientation == 0) {
+		      //add whatever image with ctx.drawImage
+		  }
+		  else if (json.bus.orientation == 1) {
+
+		  }
+		  else if (json.bus.orientation == 2) {
+
+		  }
+		  else if (json.bus.orientation == 3) {
+
+		  }
+
   	      });
   }
 
@@ -102,35 +164,84 @@
   	      
   	      // A JSON payload
   	      body: JSON.stringify({
-  		  "up": 0,
-  		  "left": 0,
-  		  "down": 0,
-  		  "right": 0
-  		  //Send the any keyboard input or video/audio back
+  		  //Send the any keyboard input
+  		  "next_transition": [0, 1]
+		  //video/audio?
   		  //also current state of the game?
-  		  
   	      })
 	  }).then(function (response) {
-  	      return response.text();
-	  }).then(function (text) {
+  	      return response.json();
+	  }).then(function (json) {
   	      
 	  });
+  }
 
+  async function render_end() {
+      console.log(C_WIDTH);
+
+      //render the game when the maximum amount of steps has been done
+      ctx.clearRect(0, 0, C_WIDTH * 2, C_HEIGHT);
+      ctx.fillStyle = "gray";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = 'black';
+      ctx.textBaseline = 'middle'; 
+      ctx.textAlign = 'center'; 
+      ctx.font = 'normal bold 50px serif';
+
+      //basically putting the minus sign in the right spot
+      ctx.fillText("Finished " + cycles + " steps", C_WIDTH, 50); 
+      if (score < 0)
+	  ctx.fillText('Score: -$' + (-1 * score), C_WIDTH, C_HEIGHT/2 + 45);
+      else
+	  ctx.fillText('Score: $' + score, C_WIDTH, C_HEIGHT/2 + 45);
   }
 
   async function run_game() {
       await get_initial_values();
-      while (cycles < max_cycles) {
+      //while (cycles < max_cycles) {
 
-	  await get_render_items();
+      //	  send_inputs();
 
-	  await send_inputs();
+      //	  while (!finished) {
+      //	      await get_render_items();
+      //	  }
 
-	  cycles += 1;
-      }
+      //	  finished = false;
+      //	  cycles += 1;
+      //}
+      await render_end();
   }
+
 
   run_game();
   
 
+
+  //Get keyboard input
+  onkeydown = function(e) {
+      var key = e.keyCode;
+      var tempX = x / DOT_SIZE;
+      var tempY = y / DOT_SIZE;
+
+      if ((key == LEFT_KEY) && (!rightDirection) && (tempX > 1)) {      
+      	  next_transition = [-1, 0];
+      }
+      else if ((key == RIGHT_KEY) && (!leftDirection) && (tempX < map_size_x -2)) {
+      	  next_transition = [1, 0];
+      }
+      else if ((key == UP_KEY) && (!downDirection) && (tempY > 1)) {
+      	  next_transition = [0, -1];
+      }
+      else if ((key == DOWN_KEY) && (!upDirection) && (tempY < map_size_y -2)) {
+      	  next_transition = [0, 1];
+      }
+  }
+
 </script>
+  
+</head>
+
+<hr>
+
+<video id="my-preview" controls autoplay></video>
+</html>

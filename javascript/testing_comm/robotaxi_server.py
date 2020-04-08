@@ -96,14 +96,24 @@ def initialize():
         'C_WIDTH': C_WIDTH,
         'C_HEIGHT': C_HEIGHT,
         'score': score,
-        'cycle': cycles,
-        'max_cycle': json_file['max_step_limit']
+        'cycles': cycles,
+        'bus': [
+            {"orientation" : orientation[0], "x" : x[0], "y" : y[0]}
+        ],
+        'max_cycle': json_file['max_step_limit'],
+        'map_size_x': len(game_map[0]),
+        'map_size_y': len(game_map)
     }
     return jsonify(message)
             
 @app.route('/render', methods=['GET'])
 def render():
-    message = {'greeting':'Hello from Flask!'}
+    message = {
+        'bus': [
+            {"orientation" : orientation[0], "x" : x[0], "y" : y[0]}
+        ],
+        'finished': true    # determines if it's time to get and use inputs
+    }
     return jsonify(message)  # serialize and use JSON headers
     
 
@@ -122,7 +132,7 @@ def recieve_inputs():
 
     #return
 
-    return 'OK', 200
+    return
 
 @app.route('/finish', methods=['POST'])
 def finish():
