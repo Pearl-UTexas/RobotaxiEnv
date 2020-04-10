@@ -14,7 +14,7 @@ from robogame import RoboTaxi
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'storage/'
-game = None
+game = RoboTaxi()
 
 @app.route('/init', methods=['GET'])
 def initialize():
@@ -29,6 +29,7 @@ def recieve_inputs():
 
     # POST request
     req_data = request.get_json()
+    game.update(req_data['next_transition'])
 
     # Javascript has returned a json. parse through
     # Probably user input, video/audio raw data
@@ -82,6 +83,6 @@ def finish():
     
 @app.route('/', methods=['GET', 'POST'])
 def page():
-    game = RoboTaxi()
+    print(game)
     #Fire up the javascript page
     return render_template('robotaxi_game.html')

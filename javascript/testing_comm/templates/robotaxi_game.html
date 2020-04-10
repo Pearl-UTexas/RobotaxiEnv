@@ -85,6 +85,18 @@
   const UP_KEY = 38;
   const DOWN_KEY = 40;
 
+  var auto_bus_north = new Image(); 
+  auto_bus_north.src = '../icon/auto_bus_north.png';
+
+  var auto_bus_west  = new Image();
+  auto_bus_west.src = '../icon/auto_bus_west.png';
+
+  var auto_bus_south = new Image();
+  auto_bus_south.src = '../icon/auto_bus_south.png';
+
+  var auto_bus_east  = new Image(); 
+  auto_bus_east.src = '../icon/auto_bus_east.png';
+  
   async function get_initial_values() {
       return fetch('/init')
 	  .then(function(response) {
@@ -105,18 +117,23 @@
   async function get_render_items() {
       // GET is the default method, so we don't need to set it
       return fetch('/render')
-  	      .then(function (response) {
+  	  .then(function (response) {
+	          console.log('render');
   		  return response.json();
   	      }).then(function (json) {
 		  //update info based on json
 		  x = json.bus.x;
 		  y = json.bus.y;
+		  orientation = json.bus.orientation;
 		  finished = json.finished;
+		  transition = json.bus.transition;
 		  
   		  // GET the states of all the game figures
   		  // Render said states accordingly
 
 		  ctx.clearRect(0, 0, C_WIDTH * 2, C_HEIGHT);
+		  ctx.fillStyle = "gray";
+		  ctx.fillRect(0, 0, canvas.width, canvas.height);
 		  ctx.fillStyle = 'black';
 		  ctx.textBaseline = 'middle'; 
 		  ctx.textAlign = 'center'; 
@@ -140,17 +157,17 @@
 		  ctx.font = 'normal bold 24px serif';
 		  ctx.fillText(cycles + "/" + max_cycles, C_WIDTH + 200, C_HEIGHT / 2 + 260)
 
-		  if (json.bus.orientation == 0) {
-		      //add whatever image with ctx.drawImage
+		  if (orientation == 0) {
+		      ctx.drawImage(auto_bus_north, x + transition[0], y + transition[1])
 		  }
 		  else if (json.bus.orientation == 1) {
-
+		      ctx.drawImage(auto_bus_west,  x + transition[0], y + transition[1])
 		  }
 		  else if (json.bus.orientation == 2) {
-
+		      ctx.drawImage(auto_bus_south, x + transition[0], y + transition[1])
 		  }
 		  else if (json.bus.orientation == 3) {
-
+		      ctx.drawImage(auto_bus_east,  x + transition[0], y + transition[1])
 		  }
 
   	      });
@@ -195,7 +212,9 @@
   }
 
   async function run_game() {
+      console.log('starting init');
       await get_initial_values();
+      console.log('finished init');
       while (cycles < max_cycles) {
 
       	  send_inputs();
@@ -212,8 +231,6 @@
 
 
   run_game();
-  
-
 
   //Get keyboard input
   onkeydown = function(e) {
