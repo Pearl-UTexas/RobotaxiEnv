@@ -177,8 +177,6 @@
   }
 
   async function render_end() {
-      console.log(C_WIDTH);
-
       //render the game when the maximum amount of steps has been done
       ctx.clearRect(0, 0, C_WIDTH * 2, C_HEIGHT);
       ctx.fillStyle = "gray";
@@ -198,17 +196,17 @@
 
   async function run_game() {
       await get_initial_values();
-      //while (cycles < max_cycles) {
+      while (cycles < max_cycles) {
 
-      //	  send_inputs();
+      	  send_inputs();
 
-      //	  while (!finished) {
-      //	      await get_render_items();
-      //	  }
+      	  while (!finished) {
+      	      await get_render_items();
+      	  }
 
-      //	  finished = false;
-      //	  cycles += 1;
-      //}
+      	  finished = false;
+      	  cycles += 1;
+      }
       await render_end();
   }
 
@@ -226,7 +224,7 @@
       if ((key == LEFT_KEY) && (!rightDirection) && (tempX > 1)) {      
       	  next_transition = [-1, 0];
       }
-      else if ((key == RIGHT_KEY) && (!leftDirection) && (tempX < map_size_x -2)) {
+      else if ((key == RIGHT_KEY) && (!leftDirection) && (tempX < map_size_x - 2)) {
       	  next_transition = [1, 0];
       }
       else if ((key == UP_KEY) && (!downDirection) && (tempY > 1)) {

@@ -9,113 +9,20 @@ import json
 import random
 import numpy as np
 import base64
+import random
+from robogame import RoboTaxi
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'storage/'
-json_file = json.loads('{  "field": [    "########",    "#......#",    "#...S..#",    "#......#",    "#.P....#",    "#...C..#",    "#......#",    "########"  ],  "initial_snake_length": 1,  "max_step_limit": 200,  "rewards": {    "timestep": 0,    "good_fruit": 6,    "bad_fruit": -1,    "died": 0,    "lava": -5  }}')
-
-def random_generate(character):
-    temp_bool = False
-
-    while (temp_bool):
-        rand1 = math.floor(math.rand() * math.floor(len(json_file['field'][0])))
-        rand2 = math.floor(math.rand() * math.floor(len(json_file['field'])))
-        if map[rand1][rand2] == '.':
-            map[rand1][rand2] = character
-            temp_bool = True
-    return
-
-def create_snake(startx, starty):
-    for z in range (0, dots):
-        x[z] = startx - (z * DOT_SIZE)
-        y[z] = starty
-        orientation[z] = 3;
-
-dots = json_file['initial_snake_length']
-NUM_OBJ = 2
-adding_obj = []
-
-cycles = 0
-score = 0
-
-left_direction = False;
-right_direction = True;
-up_direction = False;
-down_direction = False;
-go = True;
-
-DELAY = 75;
-C_HEIGHT = 700;
-C_WIDTH = 700;
-DOT_SIZE = C_HEIGHT / len(json_file['field'][0]);
-MAX_DOTS = len(json_file['field'][0]) * len(json_file['field'])
-INC_VAL = 10
-COLLISION_TIME = 7;
-RANDGEN_TIME = -1 * (COLLISION_TIME + 3);
-
-x = [0] * MAX_DOTS
-y = [0] * MAX_DOTS
-orientation = [0] * MAX_DOTS
-game_map = ['.'] * len(json_file['field'])
-accident_tracker = [0] * len(json_file['field'])
-next_transition = [1.0, 0.0]
-
-for i in range (0, len(json_file['field'])):
-    game_map[i] = list(json_file['field'][i])
-    accident_tracker[i] = [0] * len(json_file['field'][0])
-
-transition = [None] * MAX_DOTS
-    
-for i in range (0, len(transition)):
-    if i == 0:
-        transition[i] = [1, 0]
-    else :
-        transition[i] = [1, 0]
-
-temp = [['C', 0], ['P', 0], ['B', 0]]
-
-for i in range (0, len(json_file['field'][0])):
-    for j in range (0, len(json_file['field'])):
-        if game_map[i][j] == 'S':
-            game_map[i][j] = '.'
-            create_snake(i * DOT_SIZE, j * DOT_SIZE)
-        elif game_map[i][j] != '.' and game_map[i][j] != '#':
-            for k in range (0, len(temp)):
-                if temp[k][0] == game_map[i][j]:
-                    temp[k][1] += 1
-
-for i in range (0, len(temp)):
-    for k in range(temp[i][1], NUM_OBJ):
-        random_generate(temp[i][0])
-
-
+game = None
 
 @app.route('/init', methods=['GET'])
 def initialize():
-    message = {
-        'C_WIDTH': C_WIDTH,
-        'C_HEIGHT': C_HEIGHT,
-        'score': score,
-        'cycles': cycles,
-        'bus': [
-            {"orientation" : orientation[0], "x" : x[0], "y" : y[0]}
-        ],
-        'max_cycle': json_file['max_step_limit'],
-        'map_size_x': len(game_map[0]),
-        'map_size_y': len(game_map)
-    }
-    return jsonify(message)
+    return jsonify(game.initial_parameters())
             
 @app.route('/render', methods=['GET'])
 def render():
-    message = {
-        'bus': [
-            {"orientation" : orientation[0], "x" : x[0], "y" : y[0]}
-        ],
-        'finished': true    # determines if it's time to get and use inputs
-    }
-    return jsonify(message)  # serialize and use JSON headers
-    
+    return jsonify(game.get_render())  # serialize and use JSON headers
 
 @app.route('/inputs', methods=['POST'])
 def recieve_inputs():
@@ -132,7 +39,7 @@ def recieve_inputs():
 
     #return
 
-    return
+    return jsonify({"BLANK" : "TEMP"})
 
 @app.route('/finish', methods=['POST'])
 def finish():
@@ -175,6 +82,6 @@ def finish():
     
 @app.route('/', methods=['GET', 'POST'])
 def page():
-
+    game = RoboTaxi()
     #Fire up the javascript page
     return render_template('robotaxi_game.html')
