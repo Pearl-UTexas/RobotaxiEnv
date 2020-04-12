@@ -18,7 +18,6 @@ class RoboTaxi():
         self.upDirection = False
         self.downDirection = False
 
-        self.DELAY = 75
         self.C_HEIGHT = 700
         self.C_WIDTH = 700
         self.DOT_SIZE = self.C_HEIGHT / len(self.json_file['field'][0])
@@ -97,6 +96,9 @@ class RoboTaxi():
                  "right" : self.rightDirection
                 }
             ],
+            'score' : self.score,
+            'map' : self.game_map,
+            'accident_tracker' : self.accident_tracker,
             'finished': self.finished    # determines if it's time to get and use inputs
         }
         return message
@@ -243,7 +245,6 @@ class RoboTaxi():
             tempY = int(self.y[0] / self.DOT_SIZE)
                 
             if (tempX == 1 and self.leftDirection or tempX == len(self.game_map[0]) - 2 and self.rightDirection):
-                # print('1',tempX,tempY) 
                 self.transition[0][0] = 0
 
                 self.leftDirection = False

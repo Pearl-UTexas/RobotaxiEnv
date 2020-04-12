@@ -84,7 +84,7 @@
   const RIGHT_KEY = 39;
   const UP_KEY = 38;
   const DOWN_KEY = 40;
-  const DELAY = 120;
+  const DELAY = 50;
 
   var auto_bus_north = new Image(); 
   auto_bus_north.src = 'static/auto_bus_north.png';
@@ -153,6 +153,9 @@
 		  leftDirection = json.bus[0].left;
 		  downDirection = json.bus[0].down;
 		  rightDirection = json.bus[0].right;
+		  score = json.score;
+		  map = json.map;
+		  accident_tracker = json.accident_tracker;
 
   		  // GET the states of all the game figures
   		  // Render said states accordingly
@@ -194,6 +197,37 @@
 		  }
 		  else if (orientation == 3) {
 		      ctx.drawImage(auto_bus_east,  x + transition[0], y + transition[1])
+		  }
+
+		  //render the other images/obstacles over the bus
+		  for (var i = 0; i < map[0].length; i++) {
+		      for (var j = 0; j < map.length; j++) {
+			  //check for dot first because of runtime efficency
+			  if (map[i][j] != '.') {
+			      //draw whatever extra images you want
+			      if (map[i][j] == '#') {
+				  ctx.drawImage(forest, i * DOT_SIZE, j * DOT_SIZE);
+			      }
+			      if (map[i][j] == 'P') {
+				  if (accident_tracker[i][j] <= 0)
+				      ctx.drawImage(man, i * DOT_SIZE, j * DOT_SIZE);
+				  else
+				      ctx.drawImage(dollar, i * DOT_SIZE, j * DOT_SIZE);
+			      }
+			      if (map[i][j] == 'B') {
+    				  if (accident_tracker[i][j] <= 0)
+    				      ctx.drawImage(road_block, i * DOT_SIZE, j * DOT_SIZE);
+    				  else
+    				      ctx.drawImage(road_block_broken, i * DOT_SIZE, j * DOT_SIZE);
+			      }
+			      if (map[i][j] == 'C') {
+				  if (accident_tracker[i][j] <= 0)
+				      ctx.drawImage(purple_car, i * DOT_SIZE, j * DOT_SIZE);
+				  else
+				      ctx.drawImage(broken_purple_car, i * DOT_SIZE, j * DOT_SIZE);
+			      }
+			  }
+		      }
 		  }
 
   	      });
@@ -242,18 +276,24 @@
       await game_cycle();
   }
 
+  async function until_finished() {
+      await get_render_items();
+      console.log('finished: ' + finished);
+      if (!finished) {
+	  await new Promise(r => setTimeout("until_finished()", DELAY));
+      }
+      else {
+	  finished = false;
+      	  cycles += 1;
+	  await game_cycle();
+      }
+      return 0;
+  }
+
   async function game_cycle() {
       if (cycles + 190 < max_cycles) {
-
       	  send_inputs();
-
-      	  while (!finished) {
-      	      await get_render_items();
-      	  }
-
-      	  finished = false;
-      	  cycles += 1;
-	  setTimeout("game_cycle()", DELAY);
+	  var throwaway = await until_finished();
       }
       else {
 	await render_end();
@@ -261,6 +301,7 @@
   }
 
   init_game();
+  render_end();
 
   //Get keyboard input
   onkeydown = function(e) {
@@ -280,11 +321,6 @@
       else if ((key == DOWN_KEY) && (!upDirection) && (tempY < map_size_y -2)) {
       	  next_transition = [0, 1];
       }
-      console.log(tempX);
-      console.log(tempY);
-      console.log(map_size_x);
-      console.log(map_size_y);
-      console.log(next_transition);
   }
 
 </script>

@@ -82,6 +82,6 @@ def finish():
     
 @app.route('/', methods=['GET', 'POST'])
 def page():
-    print(game)
+    game = RoboTaxi()
     #Fire up the javascript page
     return render_template('robotaxi_game.html')
