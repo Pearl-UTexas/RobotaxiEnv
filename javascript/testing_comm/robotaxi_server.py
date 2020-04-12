@@ -28,7 +28,7 @@ def render():
 def recieve_inputs():
 
     # POST request
-    req_data = request.get_json()
+    req_data = request.get_json(force=True)
     game.update(req_data['next_transition'])
 
     # Javascript has returned a json. parse through
@@ -64,7 +64,7 @@ def finish():
         video_file = request.files['video-blob']
         #insert_blob_tuple = (player_id, video_file)
         #result = cursor.execute(sql_insert_blob_query, insert_blob_tuple)
-        video_file.save(os.path.join(app.config['UPLOAD_FOLDER'], 'testing_audio.webm'))
+        # video_file.save(os.path.join(app.config['UPLOAD_FOLDER'], 'testing_audio.webm'))
         
         #mydb.commit()
 
@@ -79,7 +79,6 @@ def finish():
         return 'finished?'
     else:
         return "ERROR: Only POST requests allowed for /finish"
-
     
 @app.route('/', methods=['GET', 'POST'])
 def page():

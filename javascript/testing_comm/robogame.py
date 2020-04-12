@@ -13,10 +13,10 @@ class RoboTaxi():
         self.cycles = 0
         self.score = 0
 
-        self.left_direction = False
-        self.right_direction = True
-        self.up_direction = False
-        self.down_direction = False
+        self.leftDirection = False
+        self.rightDirection = True
+        self.upDirection = False
+        self.downDirection = False
 
         self.DELAY = 75
         self.C_HEIGHT = 700
@@ -32,8 +32,8 @@ class RoboTaxi():
         self.orientation = [0] * self.MAX_DOTS
         self.game_map = ['.'] * len(self.json_file['field'])
         self.accident_tracker = [0] * len(self.json_file['field'])
-        self.next_transition = [1.0, 0.0]
-        self.finished = True
+        self.next_transition = [1, 0]
+        self.finished = False
         
         for i in range (0, len(self.json_file['field'])):
             self.game_map[i] = list(self.json_file['field'][i])
@@ -73,12 +73,13 @@ class RoboTaxi():
             'cycles': self.cycles,
             'bus': [
                 {"orientation" : self.orientation[0],
-                 "x" : self.x[0], "y" : self.y[0],
-                 "transition" : self.transition}
+                 "transition" : self.transition[0],
+                 "x" : self.x[0], "y" : self.y[0]}
             ],
             'max_cycle': self.json_file['max_step_limit'],
             'map_size_x': len(self.game_map[0]),
-            'map_size_y': len(self.game_map)
+            'map_size_y': len(self.game_map),
+            'dot_size': self.DOT_SIZE
         }
         return message
 
@@ -87,13 +88,21 @@ class RoboTaxi():
         self.checkCollision()
         message = {
             'bus': [
-                {"orientation" : self.orientation[0], "x" : self.x[0], "y" : self.y[0]}
+                {"orientation" : self.orientation[0],
+                 "transition" : self.transition[0],
+                 "x" : self.x[0], "y" : self.y[0],
+                 "up" : self.upDirection,
+                 "left" : self.leftDirection,
+                 "down" : self.downDirection,
+                 "right" : self.rightDirection
+                }
             ],
             'finished': self.finished    # determines if it's time to get and use inputs
         }
         return message
 
     def update(self, transition):
+        self.finished = False
         self.next_transition = transition
         return
     ##########################ESSENTIAL FUNCTIONS##########################
@@ -267,17 +276,17 @@ class RoboTaxi():
                 self.accident_tracker[tempX][tempY] = self.COLLISION_TIME         # 7 denotes the amount of cycles for this entity to fade away
             elif (self.game_map[tempX][tempY] == 'P' and self.accident_tracker[tempX][tempY] == 0):
                 # bus picked up a person			
-                self.score += json_file['rewards']['good_fruit']
-                self.adding_obj.append([RANDGEN_TIME, "P"])
+                self.score += self.json_file['rewards']['good_fruit']
+                self.adding_obj.append([self.RANDGEN_TIME, "P"])
                 self.accident_tracker[tempX][tempY] = self.COLLISION_TIME
             elif (self.game_map[tempX][tempY] == 'B' and self.accident_tracker[tempX][tempY] == 0):
                 # bus ran into a road stop		
-                self.score += json_file['rewards']['bad_fruit']
-                self.adding_obj.append([RANDGEN_TIME, "B"])
+                self.score += self.json_file['rewards']['bad_fruit']
+                self.adding_obj.append([self.RANDGEN_TIME, "B"])
                 self.accident_tracker[tempX][tempY] = self.COLLISION_TIME	
             elif (self.game_map[tempX][tempY] == '#' and self.accident_tracker[tempX][tempY] == 0):
                 # bus hit a forest
-                self.score += self.json_file['rewards']['dead']
+                self.score += self.json_file['rewards']['died']
                 self.accident_tracker[tempX][tempY] = self.COLLISION_TIME
 
             # iterate thorugh the entire map to check if any can be removed due to fade time elapsing
