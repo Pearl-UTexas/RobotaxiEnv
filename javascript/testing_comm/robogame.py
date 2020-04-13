@@ -85,6 +85,14 @@ class RoboTaxi():
     def get_render(self):
         self.move()
         self.checkCollision()
+        # print("----------------------------------------------")
+        # print("transition: " + str(self.transition[0]))
+        # print("next_transition: " + str(self.next_transition))
+        # print("up: " + str(self.upDirection))
+        # print("left: " + str(self.leftDirection))
+        # print("down: " + str(self.downDirection))
+        # print("right: " + str(self.rightDirection))
+        # print("----------------------------------------------")
         message = {
             'bus': [
                 {"orientation" : self.orientation[0],
@@ -106,6 +114,7 @@ class RoboTaxi():
     def update(self, transition):
         self.finished = False
         self.next_transition = transition
+        self.checkCollision()
         return
     ##########################ESSENTIAL FUNCTIONS##########################
 
@@ -233,10 +242,13 @@ class RoboTaxi():
             if (abs(self.transition[0][1]) > self.DOT_SIZE):
                 self.reset()
                 self.y[0] += self.DOT_SIZE
+
         return
 
     def checkCollision(self):
         for z in range(self.dots, 0, -1):
+
+            # snake bit itself or is outside of the bounds
             if ((z > 4) and (self.x[0] == self.x[z]) and (self.y[0] == self.y[z])):
                 self.cycles = self.json_file['max_step_limit']
 
@@ -259,8 +271,8 @@ class RoboTaxi():
 
             if (tempY == 1 and self.upDirection or tempY == len(self.game_map[0]) - 2 and self.downDirection):
                 self.transition[0][1] = 0
-                self.upDirection = True
-                self.downDirection = True
+                self.upDirection = False
+                self.downDirection = False
                 if (tempX < len(self.game_map[0]) / 2):
                     self.transition[0][0] = 1
                     self.rightDirection = True

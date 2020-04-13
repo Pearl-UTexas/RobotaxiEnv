@@ -156,6 +156,7 @@
 		  score = json.score;
 		  map = json.map;
 		  accident_tracker = json.accident_tracker;
+		  console.log(next_transition);
 
   		  // GET the states of all the game figures
   		  // Render said states accordingly
@@ -216,9 +217,9 @@
 			      }
 			      if (map[i][j] == 'B') {
     				  if (accident_tracker[i][j] <= 0)
-    				      ctx.drawImage(road_block, i * DOT_SIZE, j * DOT_SIZE);
-    				  else
     				      ctx.drawImage(road_block_broken, i * DOT_SIZE, j * DOT_SIZE);
+    				  else
+    				      ctx.drawImage(road_block, i * DOT_SIZE, j * DOT_SIZE);
 			      }
 			      if (map[i][j] == 'C') {
 				  if (accident_tracker[i][j] <= 0)
@@ -278,7 +279,6 @@
 
   async function until_finished() {
       await get_render_items();
-      console.log('finished: ' + finished);
       if (!finished) {
 	  await new Promise(r => setTimeout("until_finished()", DELAY));
       }
@@ -291,7 +291,7 @@
   }
 
   async function game_cycle() {
-      if (cycles + 190 < max_cycles) {
+      if (cycles < max_cycles) {
       	  send_inputs();
 	  var throwaway = await until_finished();
       }
@@ -318,7 +318,7 @@
       else if ((key == UP_KEY) && (!downDirection) && (tempY > 1)) {
       	  next_transition = [0, -1];
       }
-      else if ((key == DOWN_KEY) && (!upDirection) && (tempY < map_size_y -2)) {
+      else if ((key == DOWN_KEY) && (!upDirection) && (tempY < map_size_y - 2)) {
       	  next_transition = [0, 1];
       }
   }
