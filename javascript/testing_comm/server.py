@@ -6,6 +6,8 @@ import subprocess
 import mysql.connector
 import os
 import random
+import numpy as np
+import base64
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'storage/'
@@ -57,9 +59,12 @@ def finish():
         video_file = request.files['video-blob']
         #insert_blob_tuple = (player_id, video_file)
         #result = cursor.execute(sql_insert_blob_query, insert_blob_tuple)
-        video_file.save(os.path.join(app.config['UPLOAD_FOLDER'], 'test.webm'))
+        video_file.save(os.path.join(app.config['UPLOAD_FOLDER'], 'testing_audio.webm'))
         
         #mydb.commit()
+
+        #with open ('testing.webm', 'wb') as f_output:
+            #f_output.write(video_file.stream)
 
         # if the connection exists, end the connection
         if mydb.is_connected():

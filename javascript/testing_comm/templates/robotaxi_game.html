@@ -156,7 +156,9 @@
 		  score = json.score;
 		  map = json.map;
 		  accident_tracker = json.accident_tracker;
-		  console.log(next_transition);
+		  if (json.override) {
+		      next_transition = json.next_transition
+		  }
 
   		  // GET the states of all the game figures
   		  // Render said states accordingly
@@ -309,16 +311,20 @@
       var tempX = x / DOT_SIZE;
       var tempY = y / DOT_SIZE;
 
-      if ((key == LEFT_KEY) && (!rightDirection) && (tempX > 1)) {      
+      if ((key == LEFT_KEY) && (!rightDirection) && (tempX > 1)) {
+	  console.log('left');
       	  next_transition = [-1, 0];
       }
       else if ((key == RIGHT_KEY) && (!leftDirection) && (tempX < map_size_x - 2)) {
+	  console.log('right');
       	  next_transition = [1, 0];
       }
       else if ((key == UP_KEY) && (!downDirection) && (tempY > 1)) {
+	  console.log('up');
       	  next_transition = [0, -1];
       }
       else if ((key == DOWN_KEY) && (!upDirection) && (tempY < map_size_y - 2)) {
+	  console.log('down');
       	  next_transition = [0, 1];
       }
   }

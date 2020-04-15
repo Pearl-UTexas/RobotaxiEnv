@@ -1,6 +1,16 @@
 import json
 import random
 
+# Debugging purposes
+# print("----------" + str(self.cycles) + "-------------------")
+# print("transition: " + str(self.transition[0]))
+# print("next_transition: " + str(self.next_transition))
+# print("up: " + str(self.upDirection))
+# print("left: " + str(self.leftDirection))
+# print("down: " + str(self.downDirection))
+# print("right: " + str(self.rightDirection))
+# print()
+
 class RoboTaxi():
 
     # Initialize the RoboTaxi game
@@ -17,6 +27,7 @@ class RoboTaxi():
         self.rightDirection = True
         self.upDirection = False
         self.downDirection = False
+        self.override = False          # Needed to update inputs from server -> game
 
         self.C_HEIGHT = 700
         self.C_WIDTH = 700
@@ -85,14 +96,6 @@ class RoboTaxi():
     def get_render(self):
         self.move()
         self.checkCollision()
-        # print("----------------------------------------------")
-        # print("transition: " + str(self.transition[0]))
-        # print("next_transition: " + str(self.next_transition))
-        # print("up: " + str(self.upDirection))
-        # print("left: " + str(self.leftDirection))
-        # print("down: " + str(self.downDirection))
-        # print("right: " + str(self.rightDirection))
-        # print("----------------------------------------------")
         message = {
             'bus': [
                 {"orientation" : self.orientation[0],
@@ -107,8 +110,12 @@ class RoboTaxi():
             'score' : self.score,
             'map' : self.game_map,
             'accident_tracker' : self.accident_tracker,
+            'next_transition' : self.next_transition,
+            'override' : self.override,
             'finished': self.finished    # determines if it's time to get and use inputs
         }
+        if self.override:
+            self.override = False
         return message
 
     def update(self, transition):
@@ -257,6 +264,8 @@ class RoboTaxi():
             tempY = int(self.y[0] / self.DOT_SIZE)
                 
             if (tempX == 1 and self.leftDirection or tempX == len(self.game_map[0]) - 2 and self.rightDirection):
+
+                self.override = True
                 self.transition[0][0] = 0
 
                 self.leftDirection = False
@@ -266,11 +275,13 @@ class RoboTaxi():
                     self.downDirection = True
                 else:
                     self.transition[0][1] = -1
-                    self.upDirection = False
-                    self.next_transition = self.transition[0]
+                    self.upDirection = True
+                self.next_transition = self.transition[0]
 
             if (tempY == 1 and self.upDirection or tempY == len(self.game_map[0]) - 2 and self.downDirection):
+                self.override = True
                 self.transition[0][1] = 0
+                # self.override = True
                 self.upDirection = False
                 self.downDirection = False
                 if (tempX < len(self.game_map[0]) / 2):
@@ -280,6 +291,7 @@ class RoboTaxi():
                     self.transition[0][0] = -1
                     self.leftDirection = True
                     self.next_transition = self.transition[0]
+                self.next_transition = self.transition[0]
 
             # check if there's been an accident/update with any of the game objects
             if (self.game_map[tempX][tempY] == 'C' and self.accident_tracker[tempX][tempY] == 0):
