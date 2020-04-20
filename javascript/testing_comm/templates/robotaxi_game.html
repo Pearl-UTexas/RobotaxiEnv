@@ -113,7 +113,7 @@
   road_block.src = 'static/road_block.png';
 
   var road_block_broken = new Image();
-  road_block.src = 'static/road_block_broken.png';
+  road_block_broken.src = 'static/road_block_broken.png';
 
   var purple_car = new Image();
   purple_car.src = 'static/purple_car.png';
@@ -229,9 +229,9 @@
 			      }
 			      if (map[i][j] == 'B') {
     				  if (accident_tracker[i][j] <= 0)
-    				      ctx.drawImage(road_block_broken, i * DOT_SIZE, j * DOT_SIZE);
-    				  else
     				      ctx.drawImage(road_block, i * DOT_SIZE, j * DOT_SIZE);
+    				  else
+    				      ctx.drawImage(road_block_broken, i * DOT_SIZE, j * DOT_SIZE);
 			      }
 			      if (map[i][j] == 'C') {
 				  if (accident_tracker[i][j] <= 0)
