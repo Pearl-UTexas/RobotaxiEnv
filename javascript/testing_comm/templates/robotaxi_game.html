@@ -3,15 +3,16 @@
 <title>RoboTaxi</title>    
 <canvas id="myCanvas" width="1400" height="700">
 </canvas>
+<video id="my-preview" controls autoplay></video>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
 <script src="https://www.WebRTC-Experiment.com/RecordRTC.js"></script>
 <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
 <script>
   
   const video = document.querySelector('video');
-  let recorder;
   var canvas = document.getElementById('myCanvas');
   var ctx = canvas.getContext('2d');
+  let recorder;
 
   var key = '{{key}}';
 
@@ -31,6 +32,7 @@
 
       var formData = new FormData();
       formData.append('video-blob', blob);
+      formData.append('key', key);
 
       xhr('/finish', formData, function (fName) {
 	  console.log("Video successfully uploaded!");
@@ -57,7 +59,7 @@
 
       video.srcObject = stream;
       recorder = new RecordRTCPromisesHandler(stream, {
-	  type: 'audio'
+	  type: 'video'
       });
 
       await recorder.startRecording();
@@ -67,9 +69,13 @@
 
   // stop recording after clicking (reccomended to not play around with this too much)
   async function stop_recording_main() {
-      await recorder.stopRecording();
-      // send the information back
-      stopRecordingCallback();
+      // weird recorder bug, hence if statement
+      if (recorder != null) {
+	  await recorder.stopRecording();
+	  // send the information back
+	  stopRecordingCallback();
+
+      }
   };
 
 
@@ -129,7 +135,7 @@
   	      })
 	  }).then(function (response) {
   	      return response.json();
-	  }).then(function (json) {
+	  }).then(async function (json) {
   	      C_WIDTH = json.C_WIDTH;
   	      C_HEIGHT = json.C_HEIGHT;
   	      score = json.score;
@@ -140,6 +146,8 @@
 	      map_size_x = json.map_size_x;
 	      map_size_y = json.map_size_y;
 	      DOT_SIZE = json.dot_size;
+
+	      await start_recording_main();    // start the video/audio recordings
 	  });
   };
 
@@ -185,6 +193,16 @@
 
 		  //create basic rendering of the right side of the screen
 		  ctx.fillText('EARNINGS', C_WIDTH + 200, C_HEIGHT / 2 + 100)
+
+		  ctx.font = 'normal bold 50px serif';
+		  ctx.drawImage(man, C_WIDTH + 50, C_HEIGHT / 2 - 300);
+		  ctx.fillText("+6", C_WIDTH + 250, C_HEIGHT / 2 - 250);
+
+		  ctx.drawImage(road_block, C_WIDTH + 50, C_HEIGHT / 2 - 200);
+		  ctx.fillText("-1", C_WIDTH + 250, C_HEIGHT / 2 - 150);
+
+		  ctx.drawImage(purple_car, C_WIDTH + 50, C_HEIGHT / 2 - 100);
+		  ctx.fillText("-5", C_WIDTH + 250, C_HEIGHT / 2 - 50);
 
 		  ctx.fillStyle = '#A0522D';
 		  ctx.fillRect(C_WIDTH + 138, C_HEIGHT / 2 + 125, 125, 50)
@@ -282,6 +300,8 @@
 	  ctx.fillText('Score: -$' + (-1 * score), C_WIDTH, C_HEIGHT/2 + 45);
       else
 	  ctx.fillText('Score: $' + score, C_WIDTH, C_HEIGHT/2 + 45);
+
+      await stop_recording_main();
   }
 
   async function init_game() {
@@ -314,6 +334,7 @@
 
   init_game();
   render_end();
+  
 
   //Get keyboard input
   onkeydown = function(e) {
@@ -339,7 +360,4 @@
   
 </head>
 
-<hr>
-
-<video id="my-preview" controls autoplay></video>
 </html>

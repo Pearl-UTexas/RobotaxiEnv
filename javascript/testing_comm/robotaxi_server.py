@@ -1,4 +1,5 @@
-# docs @ http://flask.pocoo.org/docs/1.0/quickstart/
+# export FLASK_APP=robotaxi_server.py
+# flask run
 
 from flask import Flask, jsonify, request, render_template, abort
 import requests as req
@@ -22,9 +23,11 @@ all_games = dict()
 def initialize():
     req_data = request.get_json(force=True)
 
+    # check if the key for the game is present
     if all_games.get(req_data['key']) == None:
         abort(404, "Game unique key not found. Please refresh the page")
     else :
+        # if so, return the initial game parameters
         game = all_games[req_data['key']]
         return jsonify(game.initial_parameters())
             
@@ -32,21 +35,24 @@ def initialize():
 def render():
     req_data = request.get_json(force=True)
 
+    # check if the key for the game is present
     if all_games.get(req_data['key']) == None:
         abort(404, "Game unique key not found. Please refresh the page")
     else :
+        # if so, get this time's render arguments
         game = all_games[req_data['key']]
         return jsonify(game.get_render())  # serialize and use JSON headers
 
 @app.route('/inputs', methods=['POST'])
 def recieve_inputs():
 
-    # POST request
+    # check if the key is within the scope
     req_data = request.get_json(force=True)
     if all_games.get(req_data['key']) == None:
         abort(404, "Game unique key not found. Please refresh the page")
-
+    
     game = all_games[req_data['key']]
+    # if so, update the arguments based off of the transition
     game.update(req_data['next_transition'])
 
     # Javascript has returned a json. parse through
@@ -64,44 +70,38 @@ def recieve_inputs():
 def finish():
 
     # Store the video file recieved
-    if request.method == 'POST':
-        req_data = request.get_json(force=True)
+    key = request.form.get('key');
 
-        if all_games.get(req_data['key']) == None:
-            abort(404, "Game unique key not found. Please refresh the page")
-        game = all_games[req_data['key']]
+    # check if the game key is present
+    if all_games.get(key) == None:
+        abort(404, "Game unique key not found. Please refresh the page")
+    game = all_games[key]
 
-        # Connect to the localhost database
-        mydb = mysql.connector.connect(
-            host="localhost",
-            db="robotaxi",
-            user="root",
-            password="Mturk$35@"
-        )
+    # store the video file on local disk
+    video_file = request.files['video-blob']
+    video_file.save(os.path.join(app.config['UPLOAD_FOLDER'], key + '.webm'))
 
-        # Get the correct data to send to database
-        cursor = mydb.cursor()
-        sql_insert_blob_query = """ INSERT INTO player (player_id, video) VALUES (%s, %s)"""
+    # # Connect to the localhost database
+    # mydb = mysql.connector.connect(
+    #     host="localhost",
+    #     db="robotaxi",
+    #     user="root",
+    #     password="Mturk$35@"
+    # )
+    
+    # store the video file and other data on a database
+    #cursor = mydb.cursor()
+    #sql_insert_blob_query = """ INSERT INTO player (player_id, video) VALUES (%s, %s)"""
+    #insert_blob_tuple = (player_id, video_file)
+    #result = cursor.execute(sql_insert_blob_query, insert_blob_tuple)
+    #mydb.commit()
 
-        player_id = random.randint(10000, 99999)
-        video_file = request.files['video-blob']
-        #insert_blob_tuple = (player_id, video_file)
-        #result = cursor.execute(sql_insert_blob_query, insert_blob_tuple)
-        # video_file.save(os.path.join(app.config['UPLOAD_FOLDER'], 'testing_audio.webm'))
-        
-        #mydb.commit()
-
-        #with open ('testing.webm', 'wb') as f_output:
-            #f_output.write(video_file.stream)
-
-        # if the connection exists, end the connection
-        if mydb.is_connected():
-            cursor.close()
-            mydb.close()
-        
-        return 'finished?'
-    else:
-        return "ERROR: Only POST requests allowed for /finish"
+    # if the connection exists, end the connection
+    # if mydb.is_connected():
+    #     cursor.close()
+    #     mydb.close()
+    
+    return 'finished?'
 
 def ran_gen(size, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for x in range(size))
@@ -110,5 +110,6 @@ def ran_gen(size, chars=string.ascii_uppercase + string.digits):
 def page():
     key = ran_gen(16, "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
     all_games[key] = RoboTaxi()
+    print(key)
     #Fire up the javascript page
     return render_template('robotaxi_game.html', key=key)
