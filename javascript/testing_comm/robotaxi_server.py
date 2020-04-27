@@ -1,10 +1,11 @@
 # export FLASK_APP=robotaxi_server.py
 # flask run
 
-from flask import Flask, jsonify, request, render_template, abort
+from flask import Flask, jsonify, request, render_template, abort, session
+from flask_session import Session
 import requests as req
 import subprocess
-import mysql.connector
+#import mysql.connector
 import os
 import json
 import random
@@ -15,43 +16,47 @@ import string
 from robogame import RoboTaxi
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'storage/'
-global all_games
-all_games = dict()
+SESSION_TYPE = 'filesystem'
+app.config.from_object(__name__)
+Session(app)
 
 @app.route('/init', methods=['POST'])
 def initialize():
     req_data = request.get_json(force=True)
 
+    print("Session dict: " + str(session))
+
     # check if the key for the game is present
-    if all_games.get(req_data['key']) == None:
+    if session[req_data['key']] == None:
+        print('404 key not found')
         abort(404, "Game unique key not found. Please refresh the page")
     else :
         # if so, return the initial game parameters
-        game = all_games[req_data['key']]
+        game = session[req_data['key']]
+        print('sending init json...')
         return jsonify(game.initial_parameters())
             
 @app.route('/render', methods=['POST'])
 def render():
     req_data = request.get_json(force=True)
-
     # check if the key for the game is present
-    if all_games.get(req_data['key']) == None:
+    if session[req_data['key']] == None:
         abort(404, "Game unique key not found. Please refresh the page")
     else :
         # if so, get this time's render arguments
-        game = all_games[req_data['key']]
+        game = session[req_data['key']]
+        print('sending render json...')
         return jsonify(game.get_render())  # serialize and use JSON headers
 
 @app.route('/inputs', methods=['POST'])
 def recieve_inputs():
-
     # check if the key is within the scope
     req_data = request.get_json(force=True)
-    if all_games.get(req_data['key']) == None:
+
+    if session[req_data['key']] == None:
         abort(404, "Game unique key not found. Please refresh the page")
-    
-    game = all_games[req_data['key']]
+
+    game = session[req_data['key']]
     # if so, update the arguments based off of the transition
     game.update(req_data['next_transition'])
 
@@ -66,6 +71,7 @@ def recieve_inputs():
 
     return jsonify({"BLANK" : "TEMP"})
 
+
 @app.route('/finish', methods=['POST'])
 def finish():
 
@@ -73,9 +79,9 @@ def finish():
     key = request.form.get('key');
 
     # check if the game key is present
-    if all_games.get(key) == None:
+    if session[req_data['key']] == None:
         abort(404, "Game unique key not found. Please refresh the page")
-    game = all_games[key]
+    game = session[req_data['key']]
 
     # store the video file on local disk
     video_file = request.files['video-blob']
@@ -88,7 +94,7 @@ def finish():
     #     user="root",
     #     password="Mturk$35@"
     # )
-    
+
     # store the video file and other data on a database
     #cursor = mydb.cursor()
     #sql_insert_blob_query = """ INSERT INTO player (player_id, video) VALUES (%s, %s)"""
@@ -100,16 +106,44 @@ def finish():
     # if mydb.is_connected():
     #     cursor.close()
     #     mydb.close()
-    
+
     return 'finished?'
+
+#@app.route('/sign_s3/')
+#def sign_s3():
+#    #   S3_BUCKET = os.environ.get('S3_BUCKET')
+#    S3_BUCKET = 'robotaxi'
+#
+#    file_name = "123456"
+#    file_type = 'audio/webm'
+#
+#    s3 = boto3.client('s3', region_name='us-east-2', config = boto3.session.Config(signature_version='s3v4'))
+#
+#    presigned_post = s3.generate_presigned_post(
+#        Bucket = S3_BUCKET,
+#        Key = file_name,
+#        Fields = {"acl": "public-read", "Content-Type": file_type},
+#        Conditions = [
+#            {"acl": "public-read"},
+#            {"Content-Type": file_type}
+#        ],
+#        ExpiresIn = 3600
+#    )
+#
+#    return json.dumps({
+#        'data': presigned_post,
+#        'url': 'https://%s.s3.amazonaws.com/%s' % (S3_BUCKET, file_name),
+#        'key': file_name
+#    })
 
 def ran_gen(size, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for x in range(size))
     
 @app.route('/', methods=['GET', 'POST'])
 def page():
+    #with app.app_context():
     key = ran_gen(16, "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
-    all_games[key] = RoboTaxi()
-    print(key)
+    session[key] = RoboTaxi()
+
     #Fire up the javascript page
     return render_template('robotaxi_game.html', key=key)
