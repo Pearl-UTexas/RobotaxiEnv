@@ -25,75 +25,79 @@
 
       let blob = await recorder.getBlob();
 
-      video.src = URL.createObjectURL(blob);
-      recorder.stream.getTracks(t => t.stop());
+      // video.src = URL.createObjectURL(blob);
+      // recorder.stream.getTracks(t => t.stop());
 
-      //getSignedRequest(blob);
-      
-      var formData = new FormData();
-      formData.append('video-blob', blob);
-      formData.append('key', key);
+      // var formData = new FormData();
+      // formData.append('video-blob', blob);
+      // formData.append('key', key);
 
-      xhr('/finish', formData, function (fName) {
-	  console.log("Video successfully uploaded!");
-      });
+      // xhr('/finish', formData, function (fName) {
+      // 	  console.log("Video successfully uploaded!");
+      // });
+      getSignedRequest(blob);
   }
 
-  //function getSignedRequest(file){
-  //    var xhr = new XMLHttpRequest();
+  function getSignedRequest(file){
+      var xhr = new XMLHttpRequest();
 
-  //    xhr.open("GET", "/sign_s3?file_name=" + "jsfilename" + "&file_type=" + "audio/webm" + "&key=" + key);
-  //    xhr.onreadystatechange = function(){
-  //        if(xhr.readyState === 4){
-  //            if(xhr.status === 200){
-  //                var response = JSON.parse(xhr.responseText);
-  //                
-  //                uploadFile(file, response.data, response.url, response.key);
-  //            }
-  //            else{
-  //                alert("Could not get signed URL.");
-  //            }
-  //        }   
-  //    };
-  //    xhr.send();
-  //}
-
-  //function uploadFile(file, s3Data, url, confirm){
-  //    var xhr = new XMLHttpRequest();
-  //    xhr.open("POST", s3Data.url);
-
-  //    var postData = new FormData();
-  //    for(key in s3Data.fields){
-  //	  postData.append(key, s3Data.fields[key]);
-  //    }
-  //    console.log(file)
-  //    postData.append('file', file);
-  //    // Display the key/value pairs
-  //    for (var pair of postData.entries()) {
-  //	  console.log(pair[0]+ ', ' + pair[1]);
-  //    }
-
-  //    xhr.send(postData);
-  //    alert("Enter the following string into mechanical turk: " + confirm)
-  //}
-
-  async function xhr(url, data, callback) {
-      console.log('calling xhr');
-      var request = new XMLHttpRequest();
-      request.onreadystatechange = function () {
-	  if (request.readyState == 4 ** request.status == 200) {
-	      callback(location.href + request.responseText);
-	  }
+      xhr.open("GET", "/sign_s3?file_name=" + key + "&file_type=" + "video/webm");
+      xhr.onreadystatechange = function(){
+          if(xhr.readyState === 4){
+              if(xhr.status === 200){
+                  var response = JSON.parse(xhr.responseText);
+                  uploadFile(file, response.data, response.url, response.key);
+              }
+              else{
+                  alert("Could not get signed URL.");
+              }
+          }   
       };
-      request.open('POST', url);
-      request.send(data);
+      xhr.send();
   }
+
+  function uploadFile(file, s3Data, url, confirm){
+      var xhr = new XMLHttpRequest();
+      xhr.open("POST", s3Data.url);
+
+      var postData = new FormData();
+      for(key in s3Data.fields){
+  	  postData.append(key, s3Data.fields[key]);
+      }
+      postData.append('file', file);
+      // Display the key/value pairs
+      // for (var pair of postData.entries()) {
+      // 	  console.log(pair[0]+ ', ' + pair[1]);
+      // }
+
+      // xhr.onreadystatechange = function() {
+      // 	  console.log('xhr status: ' + xhr.status);
+      // 	  console.log(xhr.responseText);
+      // 	  if (xhr.status === 200) {
+      // 	      console.log('xhr status 200');
+      // 	  }
+      // }
+      xhr.send(postData);
+      alert("Enter the following string into mechanical turk: " + confirm)
+  }
+
+  // async function xhr(url, data, callback) {
+  //     console.log('calling xhr');
+  //     var request = new XMLHttpRequest();
+  //     request.onreadystatechange = function () {
+  // 	  if (request.readyState == 4 ** request.status == 200) {
+  // 	      callback(location.href + request.responseText);
+  // 	  }
+  //     };
+  //     request.open('POST', url);
+  //     request.send(data);
+  // }
 
   // start recording after clicking (reccomended to not play around with this too much)
   async function start_recording_main() {
 
       //specify the stream types wanted
-      let stream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
+      let stream = await navigator.mediaDevices.getUserMedia({video: true, audio: {echoCancellation: true}});
 
       video.srcObject = stream;
       recorder = new RecordRTCPromisesHandler(stream, {
@@ -112,7 +116,6 @@
 	  await recorder.stopRecording();
 	  // send the information back
 	  stopRecordingCallback();
-
       }
   };
 
@@ -215,8 +218,6 @@
 		  if (json.override) {
 		      next_transition = json.next_transition
 		  }
-
-		  console.log('got rendered json');
 
   		  // GET the states of all the game figures
   		  // Render said states accordingly
@@ -345,21 +346,16 @@
   }
 
   async function init_game() {
-      console.log('init');
       await get_initial_values();
       await game_cycle();
   }
 
   async function until_finished() {
-      console.log('get_render');
       await get_render_items();
       if (!finished) {
-	  console.log("until finished");
 	  await new Promise(r => setTimeout("until_finished()", DELAY));
-	  console.log("after finished");
       }
       else {
-	  console.log('to next cycle');
 	  finished = false;
       	  cycles += 1;
 	  await game_cycle();
@@ -368,7 +364,7 @@
   }
 
   async function game_cycle() {
-      if (cycles < max_cycles) {
+      if (cycles + 190 < max_cycles) {
       	  send_inputs();
 	  var throwaway = await until_finished();
       }
@@ -379,7 +375,6 @@
 
   init_game();
   render_end();
-  
 
   //Get keyboard input
   onkeydown = function(e) {
