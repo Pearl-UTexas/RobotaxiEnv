@@ -21,12 +21,11 @@ app = Flask(__name__)
 SESSION_TYPE = 'filesystem'
 app.config.from_object(__name__)
 Session(app)
+EXIST_THREHOLD = 86400 # time in seconds
 
 @app.route('/init', methods=['POST'])
 def initialize():
     req_data = request.get_json(force=True)
-
-    print("Session dict: " + str(session))
 
     # check if the key for the game is present
     if session[req_data['key']] == None:
@@ -109,6 +108,18 @@ def recieve_inputs():
 # 
 #     return 'finished?'
 
+@app.route('/logging', methods=['POST'])
+def return_log_data():
+    # check if the key is within the scope
+    req_data = request.get_json(force=True)
+
+    if session[req_data['key']] == None:
+        abort(404, "Game unique key not found. Please refresh the page")
+    game = session[req_data['key']]
+
+    return jsonify(game.get_log_values())
+
+
 @app.route('/sign_s3/')
 def sign_s3():
     #   S3_BUCKET = os.environ.get('S3_BUCKET')
@@ -137,6 +148,18 @@ def sign_s3():
 
 def ran_gen(size, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for x in range(size))
+
+@app.route('/clear', methods=['GET'])
+def clear():
+    # Traverse through each game. Delete any games that've lasted too long
+    count = 0
+    for hashkey in list(session):
+        if isinstance(session[hashkey], RoboTaxi):
+            delta_time_in_seconds = session[hashkey].get_time_difference()
+            if delta_time_in_seconds > EXIST_THREHOLD:
+                del session[hashkey]
+                count += 1
+    return 'Finished! Cleared ' + str(count) + 'games! ^_^'
 
 @app.route('/', methods=['GET', 'POST'])
 def page():

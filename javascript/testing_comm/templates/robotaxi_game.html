@@ -25,28 +25,38 @@
 
       let blob = await recorder.getBlob();
 
-      // video.src = URL.createObjectURL(blob);
-      // recorder.stream.getTracks(t => t.stop());
+      video.src = URL.createObjectURL(blob);
+      recorder.stream.getTracks(t => t.stop());
 
-      // var formData = new FormData();
-      // formData.append('video-blob', blob);
-      // formData.append('key', key);
+  
+      console.log(blob);
+      var stringname = "audio/webm"
+      var keywebmname = key + "recording";
+      getSignedRequest(blob, stringname, keywebmname, false);
 
-      // xhr('/finish', formData, function (fName) {
-      // 	  console.log("Video successfully uploaded!");
-      // });
-      getSignedRequest(blob);
+      // await sleep(3000);
+      await get_final_log();
+      var logname = "application/json";
+      var keyjsonname = key + "logging"
+  
+      getSignedRequest(json_game_log, logname, keyjsonname, true);
+          
   }
 
-  function getSignedRequest(file){
-      var xhr = new XMLHttpRequest();
+  const sleep = (milliseconds) => {
+      return new Promise(resolve => setTimeout(resolve, milliseconds))
+  }
 
-      xhr.open("GET", "/sign_s3?file_name=" + key + "&file_type=" + "video/webm");
+  function getSignedRequest(file, stringname, keyname, isJson){
+      var xhr = new XMLHttpRequest();
+ 
+      xhr.open("GET", "/sign_s3?file_name="+keyname+"&file_type="+stringname);
       xhr.onreadystatechange = function(){
           if(xhr.readyState === 4){
               if(xhr.status === 200){
+		  console.log('working');
                   var response = JSON.parse(xhr.responseText);
-                  uploadFile(file, response.data, response.url, response.key);
+                  uploadFile(file, response.data, response.url, response, isJson);
               }
               else{
                   alert("Could not get signed URL.");
@@ -56,31 +66,33 @@
       xhr.send();
   }
 
-  function uploadFile(file, s3Data, url, confirm){
+  function uploadFile(file, s3Data, url, confirm, isJson){
       var xhr = new XMLHttpRequest();
       xhr.open("POST", s3Data.url);
 
       var postData = new FormData();
-      for(key in s3Data.fields){
-  	  postData.append(key, s3Data.fields[key]);
+      for(s3key in s3Data.fields){
+          postData.append(s3key, s3Data.fields[s3key]);
       }
-      postData.append('file', file);
+      console.log('postData');
+      console.log(postData)
+      if (isJson) {
+          postData.append('file', JSON.stringify(file));
+
+      } else {
+          //console.log('is a webm file in upload file');
+          postData.append('file', file);
+      }
       // Display the key/value pairs
-      // for (var pair of postData.entries()) {
-      // 	  console.log(pair[0]+ ', ' + pair[1]);
-      // }
+      //for (var pair of postData.entries()) {
+      //    console.log(pair[0]+ ', ' + pair[1]); 
+      //}
 
-      // xhr.onreadystatechange = function() {
-      // 	  console.log('xhr status: ' + xhr.status);
-      // 	  console.log(xhr.responseText);
-      // 	  if (xhr.status === 200) {
-      // 	      console.log('xhr status 200');
-      // 	  }
-      // }
       xhr.send(postData);
-      alert("Enter the following string into mechanical turk: " + confirm)
+      if (isJson) {
+          alert("Enter the following string into mechanical turk: " + key);
+      }
   }
-
   // async function xhr(url, data, callback) {
   //     console.log('calling xhr');
   //     var request = new XMLHttpRequest();
@@ -167,7 +179,9 @@
 
   var broken_purple_car = new Image();
   broken_purple_car.src = 'static/broken_purple_car.png';
-  
+
+  var my_sound = new sound("static/");
+
   async function get_initial_values() {
       return fetch('/init', {
   	      method: 'POST',
@@ -324,6 +338,18 @@
   	      
 	  });
   }
+    async function get_final_log() {
+	// GET is the default method, so we don't need to set it
+	return fetch('/logging', {
+	    method: 'POST',
+	    body: JSON.stringify({
+	    "key" : key
+	    })}).then(function (response) {
+		return response.json();
+	    }).then(function (json) {
+		json_game_log = json;
+	});
+    }
 
   async function render_end() {
       //render the game when the maximum amount of steps has been done
@@ -353,9 +379,11 @@
   async function until_finished() {
       await get_render_items();
       if (!finished) {
+	  console.log('delay');
 	  await new Promise(r => setTimeout("until_finished()", DELAY));
       }
       else {
+	  console.log('next');
 	  finished = false;
       	  cycles += 1;
 	  await game_cycle();
@@ -364,8 +392,8 @@
   }
 
   async function game_cycle() {
-      if (cycles + 190 < max_cycles) {
-      	  send_inputs();
+      if (cycles < max_cycles) {
+      	  await send_inputs();
 	  var throwaway = await until_finished();
       }
       else {
@@ -395,6 +423,21 @@
       	  next_transition = [0, 1];
       }
   }
+
+  function sound(src) {
+      this.sound = document.createElement("audio");
+      this.sound.src = src;
+      this.sound.setAttribute("preload", "auto");
+      this.sound.setAttribute("controls", "none");
+      this.sound.style.display = "none";
+      document.body.appendChild(this.sound);
+      this.play = function(){
+	  this.sound.play();
+      }
+      this.stop = function(){
+	  this.sound.pause();
+      }
+  } 
 
 </script>
   

@@ -1,5 +1,6 @@
 import json
 import random
+import time
 
 # Debugging purposes
 # print("----------" + str(self.cycles) + "-------------------")
@@ -44,12 +45,19 @@ class RoboTaxi():
         self.accident_tracker = [0] * len(self.json_file['field'])
         self.next_transition = [1, 0]
         self.finished = False
+        self.start_time = time.time()
+        self.logger = dict()
+
+       
         
         for i in range (0, len(self.json_file['field'])):
             self.game_map[i] = list(self.json_file['field'][i])
             self.accident_tracker[i] = [0] * len(self.json_file['field'][0])
             
         self.transition = [None] * self.MAX_DOTS
+
+        init = self.log_game_values()
+        self.logger[0] = init
             
         for i in range (0, len(self.transition)):
             if i == 0:
@@ -118,13 +126,61 @@ class RoboTaxi():
             self.override = False
         return message
 
+    
+    def log_game_values(self):
+        # ret = dict()
+        # ret['game_map'] = self.game_map
+        # ret['initial_json'] = self.json_file
+        # ret['next_transition'] = self.next_transition
+        # ret['accident_tracker'] = self.accident_tracker
+        # ret['RANDGEN_TIME'] = self.RANDGEN_TIME
+        # ret['finished'] = self.finished
+        # ret['orientation'] = self.orientation
+        # ret['cycles'] = self.cycles
+        # ret['max_cycles'] = self.max_cycles
+        # ret['score'] = self.score
+
+        ret = {
+            'bus': [
+                {"orientation" : self.orientation[0],
+                 "transition" : self.transition[0],
+                 "x" : self.x[0], "y" : self.y[0],
+                 "up" : self.upDirection,
+                 "left" : self.leftDirection,
+                 "down" : self.downDirection,
+                 "right" : self.rightDirection
+                }
+            ],
+            'score' : self.score,
+            'map' : self.game_map,
+            'accident_tracker' : self.accident_tracker,
+            'next_transition' : self.next_transition,
+            'override' : self.override,
+            'finished': self.finished    # determines if it's time to get and use inputs
+        }
+
+        return ret
+
+
     def update(self, transition):
         self.finished = False
         self.next_transition = transition
         self.checkCollision()
+
+        curtime = time.time()
+        diff = curtime - self.start_time
+        all_vars = self.log_game_values()
+        self.logger[diff] = all_vars
+
         return
+
+    def clear(self):
+        return time.time() - self.start_time
+
     ##########################ESSENTIAL FUNCTIONS##########################
 
+    def get_log_values(self):
+        return self.logger
 
     # randomly generate new game objects
     def random_generate(self, character):
