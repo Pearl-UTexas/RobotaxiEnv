@@ -180,7 +180,14 @@
   var broken_purple_car = new Image();
   broken_purple_car.src = 'static/broken_purple_car.png';
 
-  var my_sound = new sound("static/");
+  var road_block_crash_sound = new sound("static/road_block_crash.wav");
+  var road_block_sound_bool = false;
+
+  var good_sound = new sound("static/good.wav");
+  var good_sound_bool = false;
+
+  var car_crash_sound = new sound("static/car_crash.wav");
+  var car_crash_sound_bool = false;
 
   async function get_initial_values() {
       return fetch('/init', {
@@ -297,20 +304,36 @@
 			      if (map[i][j] == 'P') {
 				  if (accident_tracker[i][j] <= 0)
 				      ctx.drawImage(man, i * DOT_SIZE, j * DOT_SIZE);
-				  else
+				  else {
 				      ctx.drawImage(dollar, i * DOT_SIZE, j * DOT_SIZE);
+				      if (good_sound_bool == false) {
+					  good_sound.play();
+					  good_sound_bool = true;
+				      }
+
+				  }
 			      }
 			      if (map[i][j] == 'B') {
     				  if (accident_tracker[i][j] <= 0)
     				      ctx.drawImage(road_block, i * DOT_SIZE, j * DOT_SIZE);
-    				  else
+    				  else {
     				      ctx.drawImage(road_block_broken, i * DOT_SIZE, j * DOT_SIZE);
+				      if (road_block_sound_bool == false) {
+					  road_block_crash_sound.play();
+					  road_block_sound_bool = true;
+				      }
+				  }
 			      }
 			      if (map[i][j] == 'C') {
 				  if (accident_tracker[i][j] <= 0)
 				      ctx.drawImage(purple_car, i * DOT_SIZE, j * DOT_SIZE);
-				  else
+				  else {
 				      ctx.drawImage(broken_purple_car, i * DOT_SIZE, j * DOT_SIZE);
+				      if (car_crash_sound_bool == false) {
+					  car_crash_sound.play();
+					  car_crash_sound_bool = true;
+				      }
+				  }
 			      }
 			  }
 		      }
@@ -372,6 +395,10 @@
   }
 
   async function init_game() {
+      var background_music = new sound("static/background1.mp3");
+      background_music.play();
+      var begin_music = new sound("static/begin.wav");
+      begin_music.play();
       await get_initial_values();
       await game_cycle();
   }
@@ -379,13 +406,14 @@
   async function until_finished() {
       await get_render_items();
       if (!finished) {
-	  console.log('delay');
 	  await new Promise(r => setTimeout("until_finished()", DELAY));
       }
       else {
-	  console.log('next');
 	  finished = false;
       	  cycles += 1;
+	  good_sound_bool = false;
+	  road_block_sound_bool = false;
+	  car_crash_sound_bool = false;
 	  await game_cycle();
       }
       return 0;
