@@ -29,7 +29,7 @@
       recorder.stream.getTracks(t => t.stop());
 
   
-      console.log(blob);
+      //console.log(blob);
       var stringname = "audio/webm"
       var keywebmname = key + "recording";
       getSignedRequest(blob, stringname, keywebmname, false);
@@ -54,7 +54,7 @@
       xhr.onreadystatechange = function(){
           if(xhr.readyState === 4){
               if(xhr.status === 200){
-		  console.log('working');
+		  //console.log('working');
                   var response = JSON.parse(xhr.responseText);
                   uploadFile(file, response.data, response.url, response, isJson);
               }
@@ -74,8 +74,8 @@
       for(s3key in s3Data.fields){
           postData.append(s3key, s3Data.fields[s3key]);
       }
-      console.log('postData');
-      console.log(postData)
+      //console.log('postData');
+      //console.log(postData)
       if (isJson) {
           postData.append('file', JSON.stringify(file));
 
@@ -139,13 +139,17 @@
   var upDirection = false;
   var downDirection = false;
   var finished = false;
+  var lag_time = 0; //in milliseconds
   var next_transition = [1, 0];
   var x, y;
+  let transition;
+  var orientation;
+  const INC_VAL = 10;
   const LEFT_KEY = 37;
   const RIGHT_KEY = 39;
   const UP_KEY = 38;
   const DOWN_KEY = 40;
-  const DELAY = 50;
+  const DELAY = 110;
 
   var auto_bus_north = new Image(); 
   auto_bus_north.src = 'static/auto_bus_north.png';
@@ -189,6 +193,10 @@
   var car_crash_sound = new sound("static/car_crash.wav");
   var car_crash_sound_bool = false;
 
+  var background_music = new sound("static/background1.mp3");
+
+  var begin_music = new sound("static/begin.wav");
+
   async function get_initial_values() {
       return fetch('/init', {
   	      method: 'POST',
@@ -208,138 +216,211 @@
 	      map_size_x = json.map_size_x;
 	      map_size_y = json.map_size_y;
 	      DOT_SIZE = json.dot_size;
+	      x = json.bus[0].x;
+	      y = json.bus[0].y;
+	      orientation = json.bus[0].orientation;
+	      lag_time = json.lag_time;
+	      transition = [json.bus[0].transition[0], json.bus[0].transition[1]];
+	      upDirection = json.bus[0].up;
+	      leftDirection = json.bus[0].left;
+	      downDirection = json.bus[0].down;
+	      rightDirection = json.bus[0].right;
+	      score = json.score;
+	      map = json.map;
+	      accident_tracker = json.accident_tracker;
+	      if (json.override) {
+		  next_transition = json.next_transition
+	      }
 
 	      await start_recording_main();    // start the video/audio recordings
 	  });
   };
 
+  //let debug_array = [];
+  //var debug_bool = false;
+
   async function get_render_items() {
+      //var date = new Date();
+      //var temp = date.getTime();
       // GET is the default method, so we don't need to set it
-      return fetch('/render', {
-  	      method: 'POST',
-  	      body: JSON.stringify({
-		  "key" : key
-  	      })
-	  }).then(function (response) {
-  		  return response.json();
-  	      }).then(function (json) {
-		  //update info based on json
-		  x = json.bus[0].x;
-		  y = json.bus[0].y;
-		  orientation = json.bus[0].orientation;
-		  finished = json.finished;
-		  transition = [json.bus[0].transition[0], json.bus[0].transition[1]];
-		  upDirection = json.bus[0].up;
-		  leftDirection = json.bus[0].left;
-		  downDirection = json.bus[0].down;
-		  rightDirection = json.bus[0].right;
-		  score = json.score;
-		  map = json.map;
-		  accident_tracker = json.accident_tracker;
-		  if (json.override) {
-		      next_transition = json.next_transition
+      //update info based on json
+      //var date2 = new Date();
+      //console.log(temp);
+      //console.log(date2.getTime());
+      //console.log("round trip: " + (date2.getTime() - temp) + "ms");
+      //if (cycles == 199 && debug_bool == false) {
+      //	  debug_bool = true;
+      //	  for (var i = 0; i < debug_array.length; i++) {
+      //	      console.log(debug_array[i]);
+      //	  }
+      //}
+      //debug_array.push(date2.getTime() - temp);
+
+      // GET the states of all the game figures
+      // Render said states accordingly
+
+      ctx.clearRect(0, 0, C_WIDTH * 2, C_HEIGHT);
+      ctx.fillStyle = "gray";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = 'black';
+      ctx.textBaseline = 'middle'; 
+      ctx.textAlign = 'center'; 
+
+      //add font functionality later
+      ctx.font = 'normal bold 40px serif';
+
+      //create basic rendering of the right side of the screen
+      ctx.fillText('EARNINGS', C_WIDTH + 200, C_HEIGHT / 2 + 100)
+
+      ctx.font = 'normal bold 50px serif';
+      ctx.drawImage(man, C_WIDTH + 50, C_HEIGHT / 2 - 300);
+      ctx.fillText("+6", C_WIDTH + 250, C_HEIGHT / 2 - 250);
+
+      ctx.drawImage(road_block, C_WIDTH + 50, C_HEIGHT / 2 - 200);
+      ctx.fillText("-1", C_WIDTH + 250, C_HEIGHT / 2 - 150);
+
+      ctx.drawImage(purple_car, C_WIDTH + 50, C_HEIGHT / 2 - 100);
+      ctx.fillText("-5", C_WIDTH + 250, C_HEIGHT / 2 - 50);
+
+      ctx.fillStyle = '#A0522D';
+      ctx.fillRect(C_WIDTH + 138, C_HEIGHT / 2 + 125, 125, 50)
+
+      ctx.fillStyle = 'black';
+      if (score < 0)
+	  ctx.fillText('-$' + (-1 * score), C_WIDTH + 200, C_HEIGHT / 2 + 150)
+      else
+	  ctx.fillText('$' + score, C_WIDTH + 200, C_HEIGHT / 2 + 150)
+
+      ctx.fillText('Time', C_WIDTH + 200, C_HEIGHT / 2 + 225)
+      ctx.font = 'normal bold 24px serif';
+      ctx.fillText(cycles + "/" + max_cycles, C_WIDTH + 200, C_HEIGHT / 2 + 260)
+
+      if (orientation == 0) {
+	  ctx.drawImage(auto_bus_north, x + transition[0], y + transition[1])
+      }
+      else if (orientation == 1) {
+	  ctx.drawImage(auto_bus_west,  x + transition[0], y + transition[1])
+      }
+      else if (orientation == 2) {
+	  ctx.drawImage(auto_bus_south, x + transition[0], y + transition[1])
+      }
+      else if (orientation == 3) {
+	  ctx.drawImage(auto_bus_east,  x + transition[0], y + transition[1])
+      }
+
+      //render the other images/obstacles over the bus
+      for (var i = 0; i < map[0].length; i++) {
+	  for (var j = 0; j < map.length; j++) {
+	      //check for dot first because of runtime efficency
+	      if (map[i][j] != '.') {
+		  //draw whatever extra images you want
+		  if (map[i][j] == '#') {
+		      ctx.drawImage(forest, i * DOT_SIZE, j * DOT_SIZE);
 		  }
+		  if (map[i][j] == 'P') {
+		      if (accident_tracker[i][j] <= 0)
+			  ctx.drawImage(man, i * DOT_SIZE, j * DOT_SIZE);
+		      else {
+			  ctx.drawImage(dollar, i * DOT_SIZE, j * DOT_SIZE);
+			  if (accident_tracker[i][j] == 3 && good_sound_bool == false) {
+			      good_sound.play();
+			      good_sound_bool = true;
+			  }
 
-  		  // GET the states of all the game figures
-  		  // Render said states accordingly
-
-		  ctx.clearRect(0, 0, C_WIDTH * 2, C_HEIGHT);
-		  ctx.fillStyle = "gray";
-		  ctx.fillRect(0, 0, canvas.width, canvas.height);
-		  ctx.fillStyle = 'black';
-		  ctx.textBaseline = 'middle'; 
-		  ctx.textAlign = 'center'; 
-
-		  //add font functionality later
-		  ctx.font = 'normal bold 40px serif';
-
-		  //create basic rendering of the right side of the screen
-		  ctx.fillText('EARNINGS', C_WIDTH + 200, C_HEIGHT / 2 + 100)
-
-		  ctx.font = 'normal bold 50px serif';
-		  ctx.drawImage(man, C_WIDTH + 50, C_HEIGHT / 2 - 300);
-		  ctx.fillText("+6", C_WIDTH + 250, C_HEIGHT / 2 - 250);
-
-		  ctx.drawImage(road_block, C_WIDTH + 50, C_HEIGHT / 2 - 200);
-		  ctx.fillText("-1", C_WIDTH + 250, C_HEIGHT / 2 - 150);
-
-		  ctx.drawImage(purple_car, C_WIDTH + 50, C_HEIGHT / 2 - 100);
-		  ctx.fillText("-5", C_WIDTH + 250, C_HEIGHT / 2 - 50);
-
-		  ctx.fillStyle = '#A0522D';
-		  ctx.fillRect(C_WIDTH + 138, C_HEIGHT / 2 + 125, 125, 50)
-
-		  ctx.fillStyle = 'black';
-		  if (score < 0)
-		      ctx.fillText('-$' + (-1 * score), C_WIDTH + 200, C_HEIGHT / 2 + 150)
-		  else
-		      ctx.fillText('$' + score, C_WIDTH + 200, C_HEIGHT / 2 + 150)
-
-		  ctx.fillText('Time', C_WIDTH + 200, C_HEIGHT / 2 + 225)
-		  ctx.font = 'normal bold 24px serif';
-		  ctx.fillText(cycles + "/" + max_cycles, C_WIDTH + 200, C_HEIGHT / 2 + 260)
-
-		  if (orientation == 0) {
-		      ctx.drawImage(auto_bus_north, x + transition[0], y + transition[1])
+		      }
 		  }
-		  else if (orientation == 1) {
-		      ctx.drawImage(auto_bus_west,  x + transition[0], y + transition[1])
-		  }
-		  else if (orientation == 2) {
-		      ctx.drawImage(auto_bus_south, x + transition[0], y + transition[1])
-		  }
-		  else if (orientation == 3) {
-		      ctx.drawImage(auto_bus_east,  x + transition[0], y + transition[1])
-		  }
-
-		  //render the other images/obstacles over the bus
-		  for (var i = 0; i < map[0].length; i++) {
-		      for (var j = 0; j < map.length; j++) {
-			  //check for dot first because of runtime efficency
-			  if (map[i][j] != '.') {
-			      //draw whatever extra images you want
-			      if (map[i][j] == '#') {
-				  ctx.drawImage(forest, i * DOT_SIZE, j * DOT_SIZE);
-			      }
-			      if (map[i][j] == 'P') {
-				  if (accident_tracker[i][j] <= 0)
-				      ctx.drawImage(man, i * DOT_SIZE, j * DOT_SIZE);
-				  else {
-				      ctx.drawImage(dollar, i * DOT_SIZE, j * DOT_SIZE);
-				      if (good_sound_bool == false) {
-					  good_sound.play();
-					  good_sound_bool = true;
-				      }
-
-				  }
-			      }
-			      if (map[i][j] == 'B') {
-    				  if (accident_tracker[i][j] <= 0)
-    				      ctx.drawImage(road_block, i * DOT_SIZE, j * DOT_SIZE);
-    				  else {
-    				      ctx.drawImage(road_block_broken, i * DOT_SIZE, j * DOT_SIZE);
-				      if (road_block_sound_bool == false) {
-					  road_block_crash_sound.play();
-					  road_block_sound_bool = true;
-				      }
-				  }
-			      }
-			      if (map[i][j] == 'C') {
-				  if (accident_tracker[i][j] <= 0)
-				      ctx.drawImage(purple_car, i * DOT_SIZE, j * DOT_SIZE);
-				  else {
-				      ctx.drawImage(broken_purple_car, i * DOT_SIZE, j * DOT_SIZE);
-				      if (car_crash_sound_bool == false) {
-					  car_crash_sound.play();
-					  car_crash_sound_bool = true;
-				      }
-				  }
-			      }
+		  if (map[i][j] == 'B') {
+		      if (accident_tracker[i][j] <= 0)
+			  ctx.drawImage(road_block, i * DOT_SIZE, j * DOT_SIZE);
+		      else {
+			  ctx.drawImage(road_block_broken, i * DOT_SIZE, j * DOT_SIZE);
+			  if (accident_tracker[i][j] == 3 && road_block_sound_bool == false) {
+			      road_block_crash_sound.play();
+			      road_block_sound_bool = true;
 			  }
 		      }
 		  }
+		  if (map[i][j] == 'C') {
+		      if (accident_tracker[i][j] <= 0)
+			  ctx.drawImage(purple_car, i * DOT_SIZE, j * DOT_SIZE);
+		      else {
+			  ctx.drawImage(broken_purple_car, i * DOT_SIZE, j * DOT_SIZE);
+			  if (accident_tracker[i][j] == 3 && car_crash_sound_bool == false) {
+			      car_crash_sound.play();
+			      car_crash_sound_bool = true;
+			  }
+		      }
+		  }
+	      }
+	  }
+      }
+      await move();
+      return;
+  }
 
-  	      });
+  async function move() {
+      if (transition[0] < 0) {
+          orientation = 1;
+          await update_increments();
+          if (Math.abs(transition[0]) > DOT_SIZE) {
+	      console.log("switched 1");
+	      finished = true;
+              x -= DOT_SIZE;
+          }
+      }
+      else if (transition[0] > 0) {
+	  //going to the right
+          orientation = 3;
+          await update_increments();
+	  //console.log(transition[0]);
+          if (Math.abs(transition[0]) > DOT_SIZE ) {
+	      //console.log("switched " + x[0]);
+	      finished = true;
+              x += DOT_SIZE;
+	      //console.log("after " + x[0]);
+          }
+      }
+      else if (transition[1] < 0) {
+	  //going up
+          orientation = 0;
+          await update_increments();
+          if (Math.abs(transition[1]) > DOT_SIZE) {
+	      console.log("switched 0");
+	      finished = true;
+              y -= DOT_SIZE;
+          }
+      }
+      else if (transition[1] > 0) {
+	  //going down
+          orientation = 2;
+          await update_increments();
+          if (Math.abs(transition[1]) > DOT_SIZE ) {
+	      console.log("switched 2");
+	      finished = true;
+              y += DOT_SIZE;
+          }
+      }
+  }
+
+  async function update_increments() {
+      if (transition[0] == 0 && transition[1] < 0) {
+	  //going up
+          transition[1] -= INC_VAL;
+      }
+      else if (transition[0] == 0 && transition[1] > 0) {
+	  //going down
+          transition[1] += INC_VAL;
+      }
+      else if (transition[0] > 0 && transition[1] == 0) {
+	  //going to the right
+	  //console.log(transition[0] + " " + INC_VAL);
+          transition[0] += INC_VAL;
+	  //console.log(transition[0] + " " + INC_VAL);
+      }
+      else if (transition[0] < 0 && transition[1] == 0) {
+	  //going to the left
+          transition[0] -= INC_VAL;
+      }
   }
 
   async function send_inputs() {
@@ -350,15 +431,41 @@
   	      // A JSON payload
   	      body: JSON.stringify({
   		  //Send the any keyboard input
+		  "key" : key,
+		  "orientation" : orientation,
+		  "transition" : transition,
+		  "x" : x,
+		  "y" : y,
+		  "up" : upDirection,
+		  "left" : leftDirection,
+		  "down" : downDirection,
+		  "right" : rightDirection,
+		  "score" : score,
+		  "map" : map,
+		  "accident_tracker" : accident_tracker,
   		  "next_transition" : next_transition,
-		  "key" : key
 		  //video/audio?
   		  //also current state of the game?
   	      })
 	  }).then(function (response) {
   	      return response.json();
 	  }).then(function (json) {
-  	      
+	      // transfer game state change after timestep increases
+	      x = json.bus[0].x;
+	      y = json.bus[0].y;
+	      orientation = json.bus[0].orientation;
+	      lag_time = json.lag_time;
+	      transition = [json.bus[0].transition[0], json.bus[0].transition[1]];
+	      upDirection = json.bus[0].up;
+	      leftDirection = json.bus[0].left;
+	      downDirection = json.bus[0].down;
+	      rightDirection = json.bus[0].right;
+	      score = json.score;
+	      map = json.map;
+	      accident_tracker = json.accident_tracker;
+	      if (json.override) {
+		  next_transition = json.next_transition
+	      }
 	  });
   }
     async function get_final_log() {
@@ -395,20 +502,35 @@
   }
 
   async function init_game() {
-      var background_music = new sound("static/background1.mp3");
-      background_music.play();
-      var begin_music = new sound("static/begin.wav");
-      begin_music.play();
       await get_initial_values();
+      background_music.play();
+      begin_music.play();
       await game_cycle();
   }
 
+  var updated = false;
+
   async function until_finished() {
+      //var temp = 0;
+      //if (updated == true) {
+      //	  updated = false;
+      //	  temp = lag_time;
+      //}
+      //console.log("before render: " + transition);
       await get_render_items();
+      //console.log("after render: " + transition);
+      //console.log(finished);
       if (!finished) {
-	  await new Promise(r => setTimeout("until_finished()", DELAY));
+	  //temp = DELAY - lag_time - temp;
+	  //if (lag_time < 0) {
+	  //    temp = 0;
+	  //}
+	  //console.log("lag_time: " + (lag_time + temp));
+	  temp = DELAY;
+	  await new Promise(r => setTimeout("until_finished()", temp));
       }
       else {
+	  console.log("jiodfa");
 	  finished = false;
       	  cycles += 1;
 	  good_sound_bool = false;
@@ -422,10 +544,11 @@
   async function game_cycle() {
       if (cycles < max_cycles) {
       	  await send_inputs();
+	  updated = true;
 	  var throwaway = await until_finished();
       }
       else {
-	await render_end();
+	  await render_end();
       }
   }
 

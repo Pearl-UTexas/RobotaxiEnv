@@ -33,28 +33,25 @@ class RoboTaxi():
         self.C_HEIGHT = 700
         self.C_WIDTH = 700
         self.DOT_SIZE = self.C_HEIGHT / len(self.json_file['field'][0])
-        self.MAX_DOTS = len(self.json_file['field'][0]) * len(self.json_file['field'])
+        # self.MAX_DOTS = len(self.json_file['field'][0]) * len(self.json_file['field'])
         self.INC_VAL = 10
-        self.COLLISION_TIME = 7
+        self.COLLISION_TIME = 4
         self.RANDGEN_TIME = -1 * (self.COLLISION_TIME + 3)
 
-        self.x = [0] * self.MAX_DOTS
-        self.y = [0] * self.MAX_DOTS
-        self.orientation = [0] * self.MAX_DOTS
+        self.x = [0] * self.dots
+        self.y = [0] * self.dots
+        self.orientation = [0] * self.dots
         self.game_map = ['.'] * len(self.json_file['field'])
         self.accident_tracker = [0] * len(self.json_file['field'])
         self.next_transition = [1, 0]
-        self.finished = False
         self.start_time = time.time()
         self.logger = dict()
-
-       
         
         for i in range (0, len(self.json_file['field'])):
             self.game_map[i] = list(self.json_file['field'][i])
             self.accident_tracker[i] = [0] * len(self.json_file['field'][0])
             
-        self.transition = [None] * self.MAX_DOTS
+        self.transition = [None] * self.dots
 
         init = self.log_game_values()
         self.logger[0] = init
@@ -97,14 +94,7 @@ class RoboTaxi():
             'max_cycle': self.json_file['max_step_limit'],
             'map_size_x': len(self.game_map[0]),
             'map_size_y': len(self.game_map),
-            'dot_size': self.DOT_SIZE
-        }
-        return message
-
-    def get_render(self):
-        self.move()
-        self.checkCollision()
-        message = {
+            'dot_size': self.DOT_SIZE,
             'bus': [
                 {"orientation" : self.orientation[0],
                  "transition" : self.transition[0],
@@ -119,12 +109,38 @@ class RoboTaxi():
             'map' : self.game_map,
             'accident_tracker' : self.accident_tracker,
             'next_transition' : self.next_transition,
-            'override' : self.override,
-            'finished': self.finished    # determines if it's time to get and use inputs
+            'override' : self.override
         }
-        if self.override:
-            self.override = False
         return message
+
+    # def get_render(self, ping_time):
+        # lag_time = time.time()
+        # self.move()
+        # lag_time = (1000 * (time.time() - lag_time)) + (1000 * time.time() - ping_time)
+        # #print("    ping_time: " + str(1000 * time.time() - ping_time))
+        # message = {
+        #     'bus': [
+        #         {"orientation" : self.orientation[0],
+        #          "transition" : self.transition[0],
+        #          "x" : self.x[0], "y" : self.y[0],
+        #          "up" : self.upDirection,
+        #          "left" : self.leftDirection,
+        #          "down" : self.downDirection,
+        #          "right" : self.rightDirection
+        #         }
+        #     ],
+        #     'score' : self.score,
+        #     'map' : self.game_map,
+        #     'accident_tracker' : self.accident_tracker,
+        #     'next_transition' : self.next_transition,
+        #     'override' : self.override,
+        #     'lag_time' : lag_time,
+        #     'time' : (1000 * time.time()),
+        #     'finished': self.finished    # determines if it's time to get and use inputs
+        # }
+        # if self.override:
+        #     self.override = False
+        # return message
 
     
     def log_game_values(self):
@@ -155,24 +171,45 @@ class RoboTaxi():
             'map' : self.game_map,
             'accident_tracker' : self.accident_tracker,
             'next_transition' : self.next_transition,
-            'override' : self.override,
-            'finished': self.finished    # determines if it's time to get and use inputs
+            'override' : self.override
         }
 
         return ret
 
 
     def update(self, transition):
-        self.finished = False
+        #lag_time = time.time()
         self.next_transition = transition
+
+        # reset transition and everything. check any collisions
+        self.reset()
         self.checkCollision()
 
         curtime = time.time()
         diff = curtime - self.start_time
         all_vars = self.log_game_values()
         self.logger[diff] = all_vars
+        #lag_time = 1000 * (time.time() - lag_time)
 
-        return
+        #return {"lag_time" : lag_time}
+        ret = {
+            'bus': [
+                {"orientation" : self.orientation[0],
+                 "transition" : self.transition[0],
+                 "x" : self.x[0], "y" : self.y[0],
+                 "up" : self.upDirection,
+                 "left" : self.leftDirection,
+                 "down" : self.downDirection,
+                 "right" : self.rightDirection
+                }
+            ],
+            'score' : self.score,
+            'map' : self.game_map,
+            'accident_tracker' : self.accident_tracker,
+            'next_transition' : self.next_transition,
+            'override' : self.override
+        }
+        return ret
 
     def clear(self):
         return time.time() - self.start_time
@@ -195,21 +232,21 @@ class RoboTaxi():
         return
         
 
-    def update_increments(self):
-        for i in range (0, self.dots):
-            # going up
-            if (self.transition[i][0] == 0 and self.transition[i][1] < 0):
-                self.transition[i][1] -= self.INC_VAL
-            # going down
-            elif (self.transition[i][0] == 0 and self.transition[i][1] > 0):
-                self.transition[i][1] += self.INC_VAL
-            # going to the right
-            elif (self.transition[i][0] > 0 and self.transition[i][1] == 0):
-                self.transition[i][0] += self.INC_VAL
-            # going to the left
-            elif (self.transition[i][0] < 0 and self.transition[i][1] == 0):
-                self.transition[i][0] -= self.INC_VAL
-        return
+    #def update_increments(self):
+    #    for i in range (0, self.dots):
+    #        # going up
+    #        if (self.transition[i][0] == 0 and self.transition[i][1] < 0):
+    #            self.transition[i][1] -= self.INC_VAL
+    #        # going down
+    #        elif (self.transition[i][0] == 0 and self.transition[i][1] > 0):
+    #            self.transition[i][1] += self.INC_VAL
+    #        # going to the right
+    #        elif (self.transition[i][0] > 0 and self.transition[i][1] == 0):
+    #            self.transition[i][0] += self.INC_VAL
+    #        # going to the left
+    #        elif (self.transition[i][0] < 0 and self.transition[i][1] == 0):
+    #            self.transition[i][0] -= self.INC_VAL
+    #    return
 
     # create the head and body of the snake
     def create_snake(self, startx, starty):
@@ -221,19 +258,18 @@ class RoboTaxi():
 
     def reset(self):
         # every sprite aside from the first dot gets updated by a frame
-        for z in range (self.dots, 0, -1):
-            self.x[z] = self.x[(z - 1)];
-            self.y[z] = self.y[(z - 1)];
-            self.orientation[z] = self.orientation[(z - 1)];
-            self.transition[z] = self.transition[(z - 1)];
-            temp_sum = abs(self.transition[z][0] + self.transition[z][1]);
-            self.transition[z] = [self.transition[z][0] * (1 / temp_sum),
-                                  self.transition[z][1] * (1 / temp_sum)]
+        # for z in range (self.dots, 0, -1):
+        #     self.x[z] = self.x[(z - 1)];
+        #     self.y[z] = self.y[(z - 1)];
+        #     self.orientation[z] = self.orientation[(z - 1)];
+        #     self.transition[z] = self.transition[(z - 1)];
+        #     temp_sum = abs(self.transition[z][0] + self.transition[z][1]);
+        #     self.transition[z] = [self.transition[z][0] * (1 / temp_sum),
+        #                           self.transition[z][1] * (1 / temp_sum)]
 
         # update timestep
         self.score += self.json_file['rewards']['timestep']
         self.cycles += 1
-        self.finished = True
 
         if (self.next_transition[0] == -1):
             self.leftDirection = True
@@ -274,32 +310,29 @@ class RoboTaxi():
     
     def move(self):
         #check if the snake is within the bounds to move a step in a given direction
-        #going to the left
         if (self.transition[0][0] < 0):
+            #going to the left
             self.orientation[0] = 1
             self.update_increments()
             if (abs(self.transition[0][0]) > self.DOT_SIZE):
                 self.reset()
                 self.x[0] -= self.DOT_SIZE
-                
-        #going to the right
-        if (self.transition[0][0] > 0):
+        elif (self.transition[0][0] > 0):
+            #going to the right
             self.orientation[0] = 3
             self.update_increments()
             if (abs(self.transition[0][0]) > self.DOT_SIZE ):
                 self.reset()
                 self.x[0] += self.DOT_SIZE
-
-        #going up
-        if (self.transition[0][1] < 0):
+        elif (self.transition[0][1] < 0):
+            #going up
             self.orientation[0] = 0
             self.update_increments()
             if (abs(self.transition[0][1]) > self.DOT_SIZE):
                 self.reset()
                 self.y[0] -= self.DOT_SIZE
-
-        #going down
-        if (self.transition[0][1] > 0):
+        elif (self.transition[0][1] > 0):
+            #going down
             self.orientation[0] = 2
             self.update_increments()
             if (abs(self.transition[0][1]) > self.DOT_SIZE):
@@ -309,82 +342,82 @@ class RoboTaxi():
         return
 
     def checkCollision(self):
-        for z in range(self.dots, 0, -1):
+        #for z in range(self.dots, 0, -1):
 
             # snake bit itself or is outside of the bounds
-            if ((z > 4) and (self.x[0] == self.x[z]) and (self.y[0] == self.y[z])):
-                self.cycles = self.json_file['max_step_limit']
+            # if ((z > 4) and (self.x[0] == self.x[z]) and (self.y[0] == self.y[z])):
+            #     self.cycles = self.json_file['max_step_limit']
 
-            # make sure to check if in game so as to not violate array ranges
-            tempX = int(self.x[0] / self.DOT_SIZE)
-            tempY = int(self.y[0] / self.DOT_SIZE)
-                
-            if (tempX == 1 and self.leftDirection or tempX == len(self.game_map[0]) - 2 and self.rightDirection):
+        # make sure to check if in game so as to not violate array ranges
+        tempX = int(self.x[0] / self.DOT_SIZE)
+        tempY = int(self.y[0] / self.DOT_SIZE)
 
-                self.override = True
-                self.transition[0][0] = 0
+        if (tempX == 1 and self.leftDirection or tempX == len(self.game_map[0]) - 2 and self.rightDirection):
 
-                self.leftDirection = False
-                self.rightDirection = False
-                if (tempY < len(self.game_map[0]) / 2):
-                    self.transition[0][1] = 1
-                    self.downDirection = True
-                else:
-                    self.transition[0][1] = -1
-                    self.upDirection = True
+            self.override = True
+            self.transition[0][0] = 0
+
+            self.leftDirection = False
+            self.rightDirection = False
+            if (tempY < len(self.game_map[0]) / 2):
+                self.transition[0][1] = 1
+                self.downDirection = True
+            else:
+                self.transition[0][1] = -1
+                self.upDirection = True
+            self.next_transition = self.transition[0]
+
+        if (tempY == 1 and self.upDirection or tempY == len(self.game_map[0]) - 2 and self.downDirection):
+            self.override = True
+            self.transition[0][1] = 0
+            # self.override = True
+            self.upDirection = False
+            self.downDirection = False
+            if (tempX < len(self.game_map[0]) / 2):
+                self.transition[0][0] = 1
+                self.rightDirection = True
+            else:
+                self.transition[0][0] = -1
+                self.leftDirection = True
                 self.next_transition = self.transition[0]
+            self.next_transition = self.transition[0]
 
-            if (tempY == 1 and self.upDirection or tempY == len(self.game_map[0]) - 2 and self.downDirection):
-                self.override = True
-                self.transition[0][1] = 0
-                # self.override = True
-                self.upDirection = False
-                self.downDirection = False
-                if (tempX < len(self.game_map[0]) / 2):
-                    self.transition[0][0] = 1
-                    self.rightDirection = True
-                else:
-                    self.transition[0][0] = -1
-                    self.leftDirection = True
-                    self.next_transition = self.transition[0]
-                self.next_transition = self.transition[0]
+        # check if there's been an accident/update with any of the game objects
+        if (self.game_map[tempX][tempY] == 'C' and self.accident_tracker[tempX][tempY] == 0):
+            # bus is on a car tile
+            self.score += self.json_file['rewards']['lava']
+            self.adding_obj.append([self.RANDGEN_TIME, "C"])
+            self.accident_tracker[tempX][tempY] = self.COLLISION_TIME         # 7 denotes the amount of cycles for this entity to fade away
+        elif (self.game_map[tempX][tempY] == 'P' and self.accident_tracker[tempX][tempY] == 0):
+            # bus picked up a person			
+            self.score += self.json_file['rewards']['good_fruit']
+            self.adding_obj.append([self.RANDGEN_TIME, "P"])
+            self.accident_tracker[tempX][tempY] = self.COLLISION_TIME
+        elif (self.game_map[tempX][tempY] == 'B' and self.accident_tracker[tempX][tempY] == 0):
+            # bus ran into a road stop		
+            self.score += self.json_file['rewards']['bad_fruit']
+            self.adding_obj.append([self.RANDGEN_TIME, "B"])
+            self.accident_tracker[tempX][tempY] = self.COLLISION_TIME	
+        elif (self.game_map[tempX][tempY] == '#' and self.accident_tracker[tempX][tempY] == 0):
+            # bus hit a forest
+            self.score += self.json_file['rewards']['died']
+            self.accident_tracker[tempX][tempY] = self.COLLISION_TIME
 
-            # check if there's been an accident/update with any of the game objects
-            if (self.game_map[tempX][tempY] == 'C' and self.accident_tracker[tempX][tempY] == 0):
-                # bus is on a car tile
-                self.score += self.json_file['rewards']['lava']
-                self.adding_obj.append([self.RANDGEN_TIME, "C"])
-                self.accident_tracker[tempX][tempY] = self.COLLISION_TIME         # 7 denotes the amount of cycles for this entity to fade away
-            elif (self.game_map[tempX][tempY] == 'P' and self.accident_tracker[tempX][tempY] == 0):
-                # bus picked up a person			
-                self.score += self.json_file['rewards']['good_fruit']
-                self.adding_obj.append([self.RANDGEN_TIME, "P"])
-                self.accident_tracker[tempX][tempY] = self.COLLISION_TIME
-            elif (self.game_map[tempX][tempY] == 'B' and self.accident_tracker[tempX][tempY] == 0):
-                # bus ran into a road stop		
-                self.score += self.json_file['rewards']['bad_fruit']
-                self.adding_obj.append([self.RANDGEN_TIME, "B"])
-                self.accident_tracker[tempX][tempY] = self.COLLISION_TIME	
-            elif (self.game_map[tempX][tempY] == '#' and self.accident_tracker[tempX][tempY] == 0):
-                # bus hit a forest
-                self.score += self.json_file['rewards']['died']
-                self.accident_tracker[tempX][tempY] = self.COLLISION_TIME
+        # iterate thorugh the entire map to check if any can be removed due to fade time elapsing
+        for i in range (0, len(self.game_map)):
+            for j in range (0, len(self.game_map[0])):
+                if (self.accident_tracker[i][j] != 0):
+                    if (self.accident_tracker[i][j] == 1):
+                        self.game_map[i][j] = '.'
+                    self.accident_tracker[i][j] -= 1
 
-            # iterate thorugh the entire map to check if any can be removed due to fade time elapsing
-            for i in range (0, len(self.game_map)):
-                for j in range (0, len(self.game_map[0])):
-                    if (self.accident_tracker[i][j] != 0):
-                        if (self.accident_tracker[i][j] == 1):
-                            self.game_map[i][j] = '.'
-                        self.accident_tracker[i][j] -= 1
+        temp_array = []
+        for i in range (0, len(self.adding_obj)):
+            self.adding_obj[i][0] += 1
+            if (self.adding_obj[i][0] == 0):
+                self.random_generate(self.adding_obj[i][1])
+            else:
+                temp_array.append(self.adding_obj[i])
 
-            temp_array = []
-            for i in range (0, len(self.adding_obj)):
-                self.adding_obj[i][0] += 1
-                if (self.adding_obj[i][0] == 0):
-                    self.random_generate(self.adding_obj[i][1])
-                else:
-                    temp_array.append(self.adding_obj[i])
-
-            self.adding_obj = temp_array
-            return
+        self.adding_obj = temp_array
+        return
