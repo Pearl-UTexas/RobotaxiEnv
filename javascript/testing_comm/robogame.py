@@ -1,4 +1,5 @@
 import json
+
 import random
 import time
 
@@ -34,7 +35,6 @@ class RoboTaxi():
         self.C_WIDTH = 700
         self.DOT_SIZE = self.C_HEIGHT / len(self.json_file['field'][0])
         # self.MAX_DOTS = len(self.json_file['field'][0]) * len(self.json_file['field'])
-        self.INC_VAL = 10
         self.COLLISION_TIME = 4
         self.RANDGEN_TIME = -1 * (self.COLLISION_TIME + 3)
 
@@ -44,18 +44,14 @@ class RoboTaxi():
         self.game_map = ['.'] * len(self.json_file['field'])
         self.accident_tracker = [0] * len(self.json_file['field'])
         self.next_transition = [1, 0]
-        self.start_time = time.time()
-        self.logger = dict()
         
         for i in range (0, len(self.json_file['field'])):
             self.game_map[i] = list(self.json_file['field'][i])
             self.accident_tracker[i] = [0] * len(self.json_file['field'][0])
             
         self.transition = [None] * self.dots
+        self.start_time = time.time()
 
-        init = self.log_game_values()
-        self.logger[0] = init
-            
         for i in range (0, len(self.transition)):
             if i == 0:
                 self.transition[i] = [1, 0]
@@ -86,11 +82,6 @@ class RoboTaxi():
             'C_HEIGHT': self.C_HEIGHT,
             'score': self.score,
             'cycles': self.cycles,
-            'bus': [
-                {"orientation" : self.orientation[0],
-                 "transition" : self.transition[0],
-                 "x" : self.x[0], "y" : self.y[0]}
-            ],
             'max_cycle': self.json_file['max_step_limit'],
             'map_size_x': len(self.game_map[0]),
             'map_size_y': len(self.game_map),
@@ -113,72 +104,7 @@ class RoboTaxi():
         }
         return message
 
-    # def get_render(self, ping_time):
-        # lag_time = time.time()
-        # self.move()
-        # lag_time = (1000 * (time.time() - lag_time)) + (1000 * time.time() - ping_time)
-        # #print("    ping_time: " + str(1000 * time.time() - ping_time))
-        # message = {
-        #     'bus': [
-        #         {"orientation" : self.orientation[0],
-        #          "transition" : self.transition[0],
-        #          "x" : self.x[0], "y" : self.y[0],
-        #          "up" : self.upDirection,
-        #          "left" : self.leftDirection,
-        #          "down" : self.downDirection,
-        #          "right" : self.rightDirection
-        #         }
-        #     ],
-        #     'score' : self.score,
-        #     'map' : self.game_map,
-        #     'accident_tracker' : self.accident_tracker,
-        #     'next_transition' : self.next_transition,
-        #     'override' : self.override,
-        #     'lag_time' : lag_time,
-        #     'time' : (1000 * time.time()),
-        #     'finished': self.finished    # determines if it's time to get and use inputs
-        # }
-        # if self.override:
-        #     self.override = False
-        # return message
-
-    
-    def log_game_values(self):
-        # ret = dict()
-        # ret['game_map'] = self.game_map
-        # ret['initial_json'] = self.json_file
-        # ret['next_transition'] = self.next_transition
-        # ret['accident_tracker'] = self.accident_tracker
-        # ret['RANDGEN_TIME'] = self.RANDGEN_TIME
-        # ret['finished'] = self.finished
-        # ret['orientation'] = self.orientation
-        # ret['cycles'] = self.cycles
-        # ret['max_cycles'] = self.max_cycles
-        # ret['score'] = self.score
-
-        ret = {
-            'bus': [
-                {"orientation" : self.orientation[0],
-                 "transition" : self.transition[0],
-                 "x" : self.x[0], "y" : self.y[0],
-                 "up" : self.upDirection,
-                 "left" : self.leftDirection,
-                 "down" : self.downDirection,
-                 "right" : self.rightDirection
-                }
-            ],
-            'score' : self.score,
-            'map' : self.game_map,
-            'accident_tracker' : self.accident_tracker,
-            'next_transition' : self.next_transition,
-            'override' : self.override
-        }
-
-        return ret
-
-
     def update(self, transition):
-        #lag_time = time.time()
         self.next_transition = transition
 
         # reset transition and everything. check any collisions
@@ -186,12 +112,7 @@ class RoboTaxi():
         self.checkCollision()
 
         curtime = time.time()
-        diff = curtime - self.start_time
-        all_vars = self.log_game_values()
-        self.logger[diff] = all_vars
-        #lag_time = 1000 * (time.time() - lag_time)
 
-        #return {"lag_time" : lag_time}
         ret = {
             'bus': [
                 {"orientation" : self.orientation[0],
@@ -207,7 +128,8 @@ class RoboTaxi():
             'map' : self.game_map,
             'accident_tracker' : self.accident_tracker,
             'next_transition' : self.next_transition,
-            'override' : self.override
+            'override' : self.override,
+            'time' : curtime
         }
         return ret
 
@@ -231,23 +153,6 @@ class RoboTaxi():
                 temp_bool = True
         return
         
-
-    #def update_increments(self):
-    #    for i in range (0, self.dots):
-    #        # going up
-    #        if (self.transition[i][0] == 0 and self.transition[i][1] < 0):
-    #            self.transition[i][1] -= self.INC_VAL
-    #        # going down
-    #        elif (self.transition[i][0] == 0 and self.transition[i][1] > 0):
-    #            self.transition[i][1] += self.INC_VAL
-    #        # going to the right
-    #        elif (self.transition[i][0] > 0 and self.transition[i][1] == 0):
-    #            self.transition[i][0] += self.INC_VAL
-    #        # going to the left
-    #        elif (self.transition[i][0] < 0 and self.transition[i][1] == 0):
-    #            self.transition[i][0] -= self.INC_VAL
-    #    return
-
     # create the head and body of the snake
     def create_snake(self, startx, starty):
         for z in range (0, self.dots):
@@ -308,39 +213,6 @@ class RoboTaxi():
 
         return
     
-    def move(self):
-        #check if the snake is within the bounds to move a step in a given direction
-        if (self.transition[0][0] < 0):
-            #going to the left
-            self.orientation[0] = 1
-            self.update_increments()
-            if (abs(self.transition[0][0]) > self.DOT_SIZE):
-                self.reset()
-                self.x[0] -= self.DOT_SIZE
-        elif (self.transition[0][0] > 0):
-            #going to the right
-            self.orientation[0] = 3
-            self.update_increments()
-            if (abs(self.transition[0][0]) > self.DOT_SIZE ):
-                self.reset()
-                self.x[0] += self.DOT_SIZE
-        elif (self.transition[0][1] < 0):
-            #going up
-            self.orientation[0] = 0
-            self.update_increments()
-            if (abs(self.transition[0][1]) > self.DOT_SIZE):
-                self.reset()
-                self.y[0] -= self.DOT_SIZE
-        elif (self.transition[0][1] > 0):
-            #going down
-            self.orientation[0] = 2
-            self.update_increments()
-            if (abs(self.transition[0][1]) > self.DOT_SIZE):
-                self.reset()
-                self.y[0] += self.DOT_SIZE
-
-        return
-
     def checkCollision(self):
         #for z in range(self.dots, 0, -1):
 

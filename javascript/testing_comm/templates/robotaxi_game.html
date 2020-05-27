@@ -3,10 +3,25 @@
 <title>RoboTaxi</title>    
 <canvas id="myCanvas" width="1400" height="700">
 </canvas>
-<video id="my-preview" controls autoplay></video>
+<video width="0" height="0" id="my-preview"></video>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
 <script src="https://www.WebRTC-Experiment.com/RecordRTC.js"></script>
 <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+<style>
+.screenshot {
+    position: absolute;
+    top: 1px;
+    left: 1px;
+}
+.start_button {
+    position: absolute;
+    top: 375px;
+    left: 1590px;
+}
+</style>
+
+<img src="static/start_screen.png" alt="example screenshot" class="screenshot" id="ss_picture">
+<button id="start_button" onclick="this.disabled=true; init_game()" class="start_button">Start game!</button>
 <script>
   
   const video = document.querySelector('video');
@@ -15,6 +30,9 @@
   let recorder;
 
   var key = '{{key}}';
+  var json_game_log = {};
+  var replay = '{{replay}}'
+  console.log("Replay: " + replay);
 
   //ctx.globalCompositeOperation = 'destination-over'
   ctx.fillStyle = "gray";
@@ -28,7 +46,6 @@
       video.src = URL.createObjectURL(blob);
       recorder.stream.getTracks(t => t.stop());
 
-  
       //console.log(blob);
       var stringname = "audio/webm"
       var keywebmname = key + "recording";
@@ -40,7 +57,6 @@
       var keyjsonname = key + "logging"
   
       getSignedRequest(json_game_log, logname, keyjsonname, true);
-          
   }
 
   const sleep = (milliseconds) => {
@@ -133,24 +149,41 @@
 
 
   //game variables and constants
+  // C_WIDTH and C_HEIGHT describe the dimensions of the canvas
+  // score keeps track of the game's score
+  // cycles describes the current timestep and max_cycles describes the duration of the cycle
+  // DOT_SIZE is the dimensions of one cell in the 8x8 grid
+  // map_size_x and map_size_y describe the dimensions of the game itself
   var C_WIDTH, C_HEIGHT, score, cycles, max_cycles, DOT_SIZE, map_size_x, map_size_y;
+  // keep track of the direction the bus will be traveling
   var leftDirection = false;
   var rightDirection = true;
   var upDirection = false;
   var downDirection = false;
+  //finished denotes if the game can move onto the next timestep
   var finished = false;
   var lag_time = 0; //in milliseconds
+  // records the orientation of the bus in the next timestep. Changes if user input overrides this
   var next_transition = [1, 0];
+  // x, y location of the bus on the canvas
   var x, y;
+  // transition keeps track of the incrementes between renders for the current timestep
   let transition;
+  // orientation describes the rotation of the bus (0: up, 1: left, 2: down, 3: right)
   var orientation;
+  // keeps track of the values 
+  var delta_score = 0;
   const INC_VAL = 10;
+  // key values denote the numeric values associated with the arrow keys
   const LEFT_KEY = 37;
   const RIGHT_KEY = 39;
   const UP_KEY = 38;
   const DOWN_KEY = 40;
+  const SPACE_KEY = 32;
+  // delay is the amount of time between render calls
   const DELAY = 110;
 
+  // instantiate all of the images accordingly
   var auto_bus_north = new Image(); 
   auto_bus_north.src = 'static/auto_bus_north.png';
 
@@ -271,8 +304,10 @@
 
       //create basic rendering of the right side of the screen
       ctx.fillText('EARNINGS', C_WIDTH + 200, C_HEIGHT / 2 + 100)
-
+      
       ctx.font = 'normal bold 50px serif';
+
+      //render the different point values for obtaining/crashing a certain object
       ctx.drawImage(man, C_WIDTH + 50, C_HEIGHT / 2 - 300);
       ctx.fillText("+6", C_WIDTH + 250, C_HEIGHT / 2 - 250);
 
@@ -282,19 +317,52 @@
       ctx.drawImage(purple_car, C_WIDTH + 50, C_HEIGHT / 2 - 100);
       ctx.fillText("-5", C_WIDTH + 250, C_HEIGHT / 2 - 50);
 
-      ctx.fillStyle = '#A0522D';
-      ctx.fillRect(C_WIDTH + 138, C_HEIGHT / 2 + 125, 125, 50)
+      ctx.font = 'normal bold 28px serif';
+      ctx.fillText("$0", 1275, C_HEIGHT / 2 + 2);
 
+      var temp_brown_size = 2 * score
+      var temp_delta_size = 2 * delta_score
+
+      //right side box brown
+      ctx.fillStyle = '#A0522D';
+      ctx.fillRect(1152, C_HEIGHT / 2 - temp_brown_size, 98, temp_brown_size);
+
+      //render the box where the score is displayed and the bar to the left of the game
+      if (delta_score == 6) {
+	  ctx.fillStyle = 'green';
+      }
+      else if (delta_score == -5) {
+	  ctx.fillStyle = 'red';
+      }
+      else if (delta_score == -1) {
+	  ctx.fillStyle = 'yellow';
+      }
+      else {
+	  ctx.fillStyle = '#A0522D';
+      }
+
+      ctx.fillRect(1152, C_HEIGHT / 2 - temp_brown_size, 98, temp_delta_size);
+
+      //score box
+      ctx.fillRect(C_WIDTH + 138, C_HEIGHT / 2 + 125, 125, 50);
+
+      //render bar to the left of the game
       ctx.fillStyle = 'black';
+      ctx.fillRect(1146, C_HEIGHT / 2, 112, 6);
+
+      //render the score
+      ctx.font = 'normal bold 50px serif';
       if (score < 0)
 	  ctx.fillText('-$' + (-1 * score), C_WIDTH + 200, C_HEIGHT / 2 + 150)
       else
 	  ctx.fillText('$' + score, C_WIDTH + 200, C_HEIGHT / 2 + 150)
 
+      //render the timestep/cycle information
       ctx.fillText('Time', C_WIDTH + 200, C_HEIGHT / 2 + 225)
       ctx.font = 'normal bold 24px serif';
       ctx.fillText(cycles + "/" + max_cycles, C_WIDTH + 200, C_HEIGHT / 2 + 260)
 
+      //render the bus
       if (orientation == 0) {
 	  ctx.drawImage(auto_bus_north, x + transition[0], y + transition[1])
       }
@@ -326,7 +394,6 @@
 			      good_sound.play();
 			      good_sound_bool = true;
 			  }
-
 		      }
 		  }
 		  if (map[i][j] == 'B') {
@@ -363,7 +430,6 @@
           orientation = 1;
           await update_increments();
           if (Math.abs(transition[0]) > DOT_SIZE) {
-	      console.log("switched 1");
 	      finished = true;
               x -= DOT_SIZE;
           }
@@ -372,12 +438,9 @@
 	  //going to the right
           orientation = 3;
           await update_increments();
-	  //console.log(transition[0]);
           if (Math.abs(transition[0]) > DOT_SIZE ) {
-	      //console.log("switched " + x[0]);
 	      finished = true;
               x += DOT_SIZE;
-	      //console.log("after " + x[0]);
           }
       }
       else if (transition[1] < 0) {
@@ -385,7 +448,6 @@
           orientation = 0;
           await update_increments();
           if (Math.abs(transition[1]) > DOT_SIZE) {
-	      console.log("switched 0");
 	      finished = true;
               y -= DOT_SIZE;
           }
@@ -395,7 +457,6 @@
           orientation = 2;
           await update_increments();
           if (Math.abs(transition[1]) > DOT_SIZE ) {
-	      console.log("switched 2");
 	      finished = true;
               y += DOT_SIZE;
           }
@@ -413,9 +474,7 @@
       }
       else if (transition[0] > 0 && transition[1] == 0) {
 	  //going to the right
-	  //console.log(transition[0] + " " + INC_VAL);
           transition[0] += INC_VAL;
-	  //console.log(transition[0] + " " + INC_VAL);
       }
       else if (transition[0] < 0 && transition[1] == 0) {
 	  //going to the left
@@ -450,6 +509,8 @@
 	  }).then(function (response) {
   	      return response.json();
 	  }).then(function (json) {
+	      json_game_log[cycles.toString()] = json;
+
 	      // transfer game state change after timestep increases
 	      x = json.bus[0].x;
 	      y = json.bus[0].y;
@@ -460,8 +521,11 @@
 	      leftDirection = json.bus[0].left;
 	      downDirection = json.bus[0].down;
 	      rightDirection = json.bus[0].right;
+	      delta_score = json.score - score;
 	      score = json.score;
 	      map = json.map;
+	      console.log("Map:");
+	      console.log(map);
 	      accident_tracker = json.accident_tracker;
 	      if (json.override) {
 		  next_transition = json.next_transition
@@ -501,7 +565,16 @@
       await stop_recording_main();
   }
 
+  async function destroy_instructions() {
+      var img = document.getElementById("ss_picture");
+      img.parentNode.removeChild(img);
+
+      var button = document.getElementById("start_button");
+      button.parentNode.removeChild(button);
+  }
+
   async function init_game() {
+      await destroy_instructions();
       await get_initial_values();
       background_music.play();
       begin_music.play();
@@ -530,7 +603,6 @@
 	  await new Promise(r => setTimeout("until_finished()", temp));
       }
       else {
-	  console.log("jiodfa");
 	  finished = false;
       	  cycles += 1;
 	  good_sound_bool = false;
@@ -552,8 +624,8 @@
       }
   }
 
-  init_game();
-  render_end();
+  //init_game();
+  //render_end();
 
   //Get keyboard input
   onkeydown = function(e) {

@@ -16,8 +16,10 @@ import base64
 import random
 import string
 from robogame import RoboTaxi
+from replay import Replay
 import boto3
 #import logging
+
 
 app = Flask(__name__)
 SESSION_TYPE = 'filesystem'
@@ -29,6 +31,8 @@ EXIST_THREHOLD = 86400 # time in seconds
 
 @app.route('/init', methods=['POST'])
 def initialize():
+
+    print("server init start")
     req_data = request.get_json(force=True)
 
     # check if the key for the game is present
@@ -36,24 +40,29 @@ def initialize():
         print('404 key not found')
         abort(404, "Game unique key not found. Please refresh the page")
     else :
-        # if so, return the initial game parameters
-        game = session[req_data['key']]
-        return jsonify(game.initial_parameters())
+        if isinstance(session[req_data['key']], RoboTaxi):
+            # if so, return the initial game parameters
+            game = session[req_data['key']]
+            return jsonify(game.initial_parameters())
+        elif isinstance(session[req_data['key']], Replay):
+            # if so, return the initial game pararmeters of the replay
+            game = session[req_data['key']]
+            return jsonify(game.initial_parameters())
             
-@app.route('/render', methods=['POST'])
-def render():
-    temp = time.time()
-    #print("    " + str(1000 * (temp - session['initial_time'])) + " ms")
-    session['initial_time'] = temp
-    # print(time.time() - session["initial_time"])
-    req_data = request.get_json(force=True)
-    # check if the key for the game is present
-    if session[req_data['key']] == None:
-        abort(404, "Game unique key not found. Please refresh the page")
-    else :
-        # if so, get this time's render arguments
-        game = session[req_data['key']]
-        return jsonify(game.get_render(req_data['ping_time']))  # serialize and use JSON headers
+# @app.route('/render', methods=['POST'])
+# def render():
+#     temp = time.time()
+#     #print("    " + str(1000 * (temp - session['initial_time'])) + " ms")
+#     session['initial_time'] = temp
+#     # print(time.time() - session["initial_time"])
+#     req_data = request.get_json(force=True)
+#     # check if the key for the game is present
+#     if session[req_data['key']] == None:
+#         abort(404, "Game unique key not found. Please refresh the page")
+#     else :
+#         # if so, get this time's render arguments
+#         game = session[req_data['key']]
+#         return jsonify(game.get_render(req_data['ping_time']))  # serialize and use JSON headers
 
 @app.route('/inputs', methods=['POST'])
 def recieve_inputs():
@@ -62,34 +71,26 @@ def recieve_inputs():
 
     if session[req_data['key']] == None:
         abort(404, "Game unique key not found. Please refresh the page")
+    elif isinstance(session[req_data['key']], Replay):
+        ret_message = session[req_data['key']].update()
+        return jsonify(ret_message)
+    elif isinstance(session[req_data['key']], RoboTaxi):
+        game = session[req_data['key']]
+        game.orientation[0] = req_data['orientation']
+        game.transition[0] = req_data['transition']
+        game.x[0] = req_data['x']
+        game.y[0] = req_data['y']
+        game.upDirection = req_data['up']
+        game.leftDirection = req_data['left']
+        game.downDirection = req_data['down']
+        game.rightDirection = req_data['right']
+        game.score = req_data['score']
+        game.game_map = req_data['map']
+        game.accident_tracker = req_data['accident_tracker']
 
-    game = session[req_data['key']]
-    game.orientation[0] = req_data['orientation']
-    game.transition[0] = req_data['transition']
-    game.x[0] = req_data['x']
-    game.y[0] = req_data['y']
-    game.upDirection = req_data['up']
-    game.leftDirection = req_data['left']
-    game.downDirection = req_data['down']
-    game.rightDirection = req_data['right']
-    game.score = req_data['score']
-    game.game_map = req_data['map']
-    game.accident_tracker = req_data['accident_tracker']
-
-    # if so, update the arguments based off of the transition
-    ret_message = game.update(req_data['next_transition'])
-    #print(str(ret_message))
-
-    # Javascript has returned a json. parse through
-    # Probably user input, video/audio raw data
-
-    # RL/Pytorch
-
-    # Process outputs back into correct states/actions (JSON)
-
-    #return
-
-    return jsonify(ret_message)
+        # if so, update the arguments based off of the transition
+        ret_message = game.update(req_data['next_transition'])
+        return jsonify(ret_message)
 
 
 # @app.route('/finish', methods=['POST'])
@@ -129,17 +130,16 @@ def recieve_inputs():
 # 
 #     return 'finished?'
 
-@app.route('/logging', methods=['POST'])
-def return_log_data():
-    # check if the key is within the scope
-    req_data = request.get_json(force=True)
-
-    if session[req_data['key']] == None:
-        abort(404, "Game unique key not found. Please refresh the page")
-    game = session[req_data['key']]
-
-    return jsonify(game.get_log_values())
-
+# @app.route('/logging', methods=['POST'])
+# def return_log_data():
+#     # check if the key is within the scope
+#     req_data = request.get_json(force=True)
+# 
+#     if session[req_data['key']] == None:
+#         abort(404, "Game unique key not found. Please refresh the page")
+#     game = session[req_data['key']]
+# 
+#     return jsonify(game.get_log_values())
 
 @app.route('/sign_s3/')
 def sign_s3():
@@ -194,9 +194,10 @@ def testing_ping():
 def page():
     #with app.app_context():
     key = ran_gen(16, "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
-    session[key] = RoboTaxi()
+    #session[key] = RoboTaxi()
+    session[key] = Replay()
     session['initial_time'] = time.time();
 
     #Fire up the javascript page
     #return render_template("testing_speed.html")
-    return render_template('robotaxi_game.html', key=key)
+    return render_template('robotaxi_game.html', key=key, replay=True)
