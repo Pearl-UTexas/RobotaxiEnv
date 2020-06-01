@@ -4,7 +4,7 @@ import os
 class Replay():
 
     def __init__(self):
-        self.override = True          # Needed to update inputs from server -> game
+        self.override = False          # Needed to update inputs from server -> game
         self.leftDirection = False
         self.rightDirection = False
         self.upDirection = False
@@ -31,12 +31,12 @@ class Replay():
 
         # collision time to record how many timesteps it takes to show how long
         # it takes for a coin or a crash icon should show
-        self.COLLISION_TIME = 4
+        self.COLLISION_TIME = 3
         self.RANDGEN_TIME = -1 * (self.COLLISION_TIME + 3)
 
         # records this timestep's bus position
-        (self.this_game_map, self.this_bus_x, self.this_bus_y, reward, self.curr_direc, self.accident_tracker) = self.process_file_game(0)
-        self.score += reward
+        (self.this_game_map, self.this_bus_x, self.this_bus_y, self.reward, self.curr_direc, self.accident_tracker) = self.process_file_game(0)
+        self.score += self.reward
 
         # get the next timestep because of direction discrepency ._.
         (self.next_game_map, self.next_bus_x, self.next_bus_y, self.next_reward, self.next_direc, self.next_accident) = self.process_file_game(1)
@@ -76,6 +76,9 @@ class Replay():
             if (i < 8):
                 game_map[i] = list(game_state[i])
 
+        # transpose
+        game_map = [[game_map[j][i] for j in range(len(game_map))] for i in range(len(game_map[0]))]
+        
         # get the reward for this timestep
         reward = int(game_state[8].split("=")[1])
         direction = game_state[12].split(":")[1]
@@ -104,14 +107,20 @@ class Replay():
                     game_map[i][j] = "."
                 # bus
                 elif game_map[i][j] == "4":
-                    game_map[i][j] = "."
-
-                    # found bus locatoin
+                    # found bus location
                     bus_x = i * self.DOT_SIZE
                     bus_y = j * self.DOT_SIZE
                     if reward != 0:
                         # append to accident tracker
                         accident_tracker[i][j] = self.COLLISION_TIME
+                        if reward == -5:
+                            game_map[i][j] = "C"
+                        if reward == -1:
+                            game_map[i][j] = "B"
+                        if reward == 6:
+                            game_map[i][j] = "P"
+                    else:
+                        game_map[i][j] = "."
                 # car
                 elif game_map[i][j] == "3":
                     game_map[i][j] = "C"
@@ -119,8 +128,10 @@ class Replay():
                 elif game_map[i][j] == "2":
                     game_map[i][j] = "B"
                 # passenger
-                elif game_map[i] == "1":
+                elif game_map[i][j] == "1":
                     game_map[i][j] = "P"
+                elif game_map[i][j] == "0":
+                    game_map[i][j] = "."
 
         #return the values needed for recreation
         return game_map, bus_x, bus_y, reward, direction, accident_tracker
@@ -138,7 +149,7 @@ class Replay():
             'dot_size': self.DOT_SIZE,
             'bus': [
                 {"orientation" : self.curr_orientation,
-                 "transition" : self.curr_direc,  # direction with next timestep
+                 "transition" : self.next_direc,  # direction with next timestep
                  "x" : self.this_bus_x, "y" : self.this_bus_y,
                  "up" : self.upDirection,
                  "left" : self.leftDirection,
@@ -156,37 +167,12 @@ class Replay():
 
     def update(self):
 
-        # update the timestep
-        self.cycles += 1
-
-        # update accident_tracker information
-        for i in range(0, 8):
-            for j in range(0, 8):
-                if self.accident_tracker[i][j] != 0:
-                    self.accident_tracker[i][j] -= 1
-                self.accident_tracker[i][j] += self.next_accident[i][j]
-
-        # update the next timestep into current timestep
-        self.this_game_map = self.next_game_map
-        self.this_bus_x = self.next_bus_x
-        self.this_bus_y = self.next_bus_y
-        self.curr_direc = self.next_direc
-        self.curr_orientation = self.next_orientation
-
         # update the score
         self.score += self.next_reward
-
-        # check if this is the (n - 1) timestep
-        if self.cycles + 1 < self.max_step_limit:
-            (self.next_game_map, self.next_bus_x, self.next_bus_y, self.next_reward, self.next_direc, self.next_accident) = self.process_file_game(self.cycles + 1)
-
-            # determine the correct orientation
-            self.next_orientation = self.determine_orientation(self.next_direc)
-        # else, just continue in the direction you're going
         ret = {
             'bus': [
                 {"orientation" : self.curr_orientation,
-                 "transition" : self.curr_direc,
+                 "transition" : self.next_direc,
                  "x" : self.this_bus_x, "y" : self.this_bus_y,
                  "up" : self.upDirection,
                  "left" : self.leftDirection,
@@ -200,6 +186,43 @@ class Replay():
             'next_transition' : self.next_direc,
             'override' : self.override
         }
+
+        # update the timestep
+        self.cycles += 1
+
+        # update accident_tracker information
+        for i in range(0, 8):
+            for j in range(0, 8):
+                if self.accident_tracker[i][j] != 0:
+                    if self.reward == -5:
+                        self.next_game_map[i][j] = "C"
+                    elif self.reward == -1:
+                        self.next_game_map[i][j] = "B"
+                    elif self.reward == 6:
+                        self.next_game_map[i][j] = "P"
+                    else :
+                        self.next_game_map[i][j] = self.this_game_map[i][j]
+                    self.accident_tracker[i][j] -= 1
+                    if self.accident_tracker[i][j] == 0 or self.accident_tracker[i][j] == 1:
+                        self.next_game_map[i][j] = "."
+                        
+                self.accident_tracker[i][j] += self.next_accident[i][j]
+
+        # update the next timestep into current timestep
+        self.this_game_map = self.next_game_map
+        self.this_bus_x = self.next_bus_x
+        self.this_bus_y = self.next_bus_y
+        self.curr_direc = self.next_direc
+        self.curr_orientation = self.next_orientation
+        self.reward = self.next_reward
+
+        # check if this is the (n - 1) timestep
+        if self.cycles + 1 < self.max_step_limit:
+            (self.next_game_map, self.next_bus_x, self.next_bus_y, self.next_reward, self.next_direc, self.next_accident) = self.process_file_game(self.cycles + 1)
+
+            # determine the correct orientation
+            self.next_orientation = self.determine_orientation(self.next_direc)
+
         return ret
 
     def clear(self):

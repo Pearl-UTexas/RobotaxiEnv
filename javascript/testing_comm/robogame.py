@@ -17,7 +17,7 @@ class RoboTaxi():
 
     # Initialize the RoboTaxi game
     def __init__(self):
-        self.json_file = json.loads('{  "field": [    "########",    "#......#",    "#...S..#",    "#......#",    "#.P....#",    "#...C..#",    "#......#",    "########"  ],  "initial_snake_length": 1,  "max_step_limit": 200,  "rewards": {    "timestep": 0,    "good_fruit": 6,    "bad_fruit": -1,    "died": 0,    "lava": -5  }}')
+        self.json_file = json.loads('{  "field": [    "########",    "#......#",    "#...S..#",    "#......#",    "#.P....#",    "#...C..#",    "#......#",    "########"  ],  "initial_snake_length": 1,  "max_step_limit": 50,  "rewards": {    "timestep": 0,    "good_fruit": 6,    "bad_fruit": -1,    "died": 0,    "lava": -5  }}')
         
         self.dots = self.json_file['initial_snake_length']
         self.NUM_OBJ = 2
@@ -44,13 +44,18 @@ class RoboTaxi():
         self.game_map = ['.'] * len(self.json_file['field'])
         self.accident_tracker = [0] * len(self.json_file['field'])
         self.next_transition = [1, 0]
+
+        self.start_time = time.time()
+        self.logger = dict()
         
         for i in range (0, len(self.json_file['field'])):
             self.game_map[i] = list(self.json_file['field'][i])
             self.accident_tracker[i] = [0] * len(self.json_file['field'][0])
             
         self.transition = [None] * self.dots
-        self.start_time = time.time()
+
+        init = self.log_game_values()
+        self.logger[0] = init
 
         for i in range (0, len(self.transition)):
             if i == 0:
@@ -112,6 +117,9 @@ class RoboTaxi():
         self.checkCollision()
 
         curtime = time.time()
+        diff = curtime - self.start_time
+        all_vars = self.log_game_values()
+        self.logger[diff] = all_vars
 
         ret = {
             'bus': [
@@ -140,6 +148,26 @@ class RoboTaxi():
 
     def get_log_values(self):
         return self.logger
+
+    def log_game_values(self):
+        ret = {
+            'bus': [
+                {"orientation" : self.orientation[0],
+                 "transition" : self.transition[0],
+                 "x" : self.x[0], "y" : self.y[0],
+                 "up" : self.upDirection,
+                 "left" : self.leftDirection,
+                 "down" : self.downDirection,
+                 "right" : self.rightDirection
+                }
+            ],
+            'score' : self.score,
+            'map' : self.game_map,
+            'accident_tracker' : self.accident_tracker,
+            'next_transition' : self.next_transition,
+            'override' : self.override
+        }
+        return ret
 
     # randomly generate new game objects
     def random_generate(self, character):

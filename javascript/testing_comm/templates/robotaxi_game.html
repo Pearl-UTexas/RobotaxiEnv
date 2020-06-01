@@ -1,5 +1,5 @@
-<html>
 <head>
+
 <title>RoboTaxi</title>    
 <canvas id="myCanvas" width="1400" height="700">
 </canvas>
@@ -18,11 +18,26 @@
     top: 375px;
     left: 1590px;
 }
+.replay_instruct {
+    position: absolute;
+    top: 150px;
+    left: 415px;
+}
+.replay_start_button {
+    position: absolute;
+    top: 300px;
+    left: 638px;
+}
 </style>
 
 <img src="static/start_screen.png" alt="example screenshot" class="screenshot" id="ss_picture">
 <button id="start_button" onclick="this.disabled=true; init_game()" class="start_button">Start game!</button>
+<button id="replay_start_button" onclick="this.disabled=true; replay_init_game()" class="replay_start_button">Start replay game!</button>
+<img src="static/replay_instruct.png" alt="replay_instruct" class="replay_instruct" id="replay_instruct">
 <script>
+
+  document.getElementById("replay_start_button").style.visibility = "hidden";
+  document.getElementById("replay_instruct").style.visibility = "hidden";
   
   const video = document.querySelector('video');
   var canvas = document.getElementById('myCanvas');
@@ -31,8 +46,8 @@
 
   var key = '{{key}}';
   var json_game_log = {};
-  var replay = '{{replay}}'
-  console.log("Replay: " + replay);
+  var replay = false;
+  //console.log("Replay: " + replay);
 
   //ctx.globalCompositeOperation = 'destination-over'
   ctx.fillStyle = "gray";
@@ -42,6 +57,7 @@
       video.srcObject = null;
 
       let blob = await recorder.getBlob();
+      console.log("Blob size (bytes): " + blob.size);
 
       video.src = URL.createObjectURL(blob);
       recorder.stream.getTracks(t => t.stop());
@@ -52,10 +68,10 @@
       getSignedRequest(blob, stringname, keywebmname, false);
 
       // await sleep(3000);
-      await get_final_log();
+      // await get_final_log();
       var logname = "application/json";
       var keyjsonname = key + "logging"
-  
+
       getSignedRequest(json_game_log, logname, keyjsonname, true);
   }
 
@@ -66,7 +82,7 @@
   function getSignedRequest(file, stringname, keyname, isJson){
       var xhr = new XMLHttpRequest();
  
-      xhr.open("GET", "/sign_s3?file_name="+keyname+"&file_type="+stringname);
+      xhr.open("GET", "/sign_s3/?file_name="+keyname+"&file_type="+stringname);
       xhr.onreadystatechange = function(){
           if(xhr.readyState === 4){
               if(xhr.status === 200){
@@ -162,6 +178,7 @@
   var downDirection = false;
   //finished denotes if the game can move onto the next timestep
   var finished = false;
+  var replay = false;     // if the client is playing (false) or watching (true)
   var lag_time = 0; //in milliseconds
   // records the orientation of the bus in the next timestep. Changes if user input overrides this
   var next_transition = [1, 0];
@@ -217,18 +234,26 @@
   var broken_purple_car = new Image();
   broken_purple_car.src = 'static/broken_purple_car.png';
 
-  var road_block_crash_sound = new sound("static/road_block_crash.wav");
+  var road_block_crash_sound = new sound("static/road_block_crash.wav", false);
   var road_block_sound_bool = false;
 
-  var good_sound = new sound("static/good.wav");
+  var good_sound = new sound("static/good.wav", false);
   var good_sound_bool = false;
 
-  var car_crash_sound = new sound("static/car_crash.wav");
+  var car_crash_sound = new sound("static/car_crash.wav", false);
   var car_crash_sound_bool = false;
 
-  var background_music = new sound("static/background1.mp3");
+  var background_music = new sound("static/background1.mp3", true);
 
-  var begin_music = new sound("static/begin.wav");
+  var begin_music = new sound("static/begin.wav", false);
+
+  async function switch_to_replay() {
+	return fetch('/switch', {
+	    method: 'POST',
+	    body: JSON.stringify({
+	    "key" : key
+	    })});
+  }
 
   async function get_initial_values() {
       return fetch('/init', {
@@ -264,8 +289,6 @@
 	      if (json.override) {
 		  next_transition = json.next_transition
 	      }
-
-	      await start_recording_main();    // start the video/audio recordings
 	  });
   };
 
@@ -377,8 +400,8 @@
       }
 
       //render the other images/obstacles over the bus
-      for (var i = 0; i < map[0].length; i++) {
-	  for (var j = 0; j < map.length; j++) {
+      for (var j = 0; j < map[0].length; j++) {
+	  for (var i = 0; i < map.length; i++) {
 	      //check for dot first because of runtime efficency
 	      if (map[i][j] != '.') {
 		  //draw whatever extra images you want
@@ -509,7 +532,7 @@
 	  }).then(function (response) {
   	      return response.json();
 	  }).then(function (json) {
-	      json_game_log[cycles.toString()] = json;
+	      //json_game_log[cycles.toString()] = json;
 
 	      // transfer game state change after timestep increases
 	      x = json.bus[0].x;
@@ -524,8 +547,6 @@
 	      delta_score = json.score - score;
 	      score = json.score;
 	      map = json.map;
-	      console.log("Map:");
-	      console.log(map);
 	      accident_tracker = json.accident_tracker;
 	      if (json.override) {
 		  next_transition = json.next_transition
@@ -562,7 +583,10 @@
       else
 	  ctx.fillText('Score: $' + score, C_WIDTH, C_HEIGHT/2 + 45);
 
-      await stop_recording_main();
+      // stop video stream if in the replay phase
+      if (replay == true) {
+	  await stop_recording_main();
+      }
   }
 
   async function destroy_instructions() {
@@ -573,11 +597,48 @@
       button.parentNode.removeChild(button);
   }
 
+  async function destroy_replay_instruct() {
+      var img = document.getElementById("replay_instruct");
+      img.parentNode.removeChild(img);
+
+      var button = document.getElementById("replay_start_button");
+      button.parentNode.removeChild(button);
+  }
+
+  async function make_replay_visible() {
+      document.getElementById("replay_start_button").style.visibility = "visible";
+      document.getElementById("replay_instruct").style.visibility = "visible";
+  }
+
   async function init_game() {
+      // destroy button and instructions
       await destroy_instructions();
+
+      // get_init_values for the robotaxi
       await get_initial_values();
+
+      // play music
       background_music.play();
       begin_music.play();
+
+      // start the actual game
+      await game_cycle();
+  }
+
+  async function replay_init_game() {
+
+      await destroy_replay_instruct();
+
+      await start_recording_main();    // start the video/audio recordings
+
+      // get_init_values for the robotaxi
+      await get_initial_values();
+
+      // play music
+      background_music.play();
+      begin_music.play();
+
+      // start the actual game
       await game_cycle();
   }
 
@@ -620,7 +681,19 @@
 	  var throwaway = await until_finished();
       }
       else {
+	  background_music.stop();
 	  await render_end();
+	  if (replay == false) {
+	      replay = true;
+	      // record this game's log
+	      await get_final_log();
+	      console.log(json_game_log);
+
+	      // switch the server to load in replay
+	      await switch_to_replay();
+
+	      await make_replay_visible();
+	  }
       }
   }
 
@@ -647,12 +720,13 @@
       }
   }
 
-  function sound(src) {
+  function sound(src, loop) {
       this.sound = document.createElement("audio");
       this.sound.src = src;
       this.sound.setAttribute("preload", "auto");
       this.sound.setAttribute("controls", "none");
       this.sound.style.display = "none";
+      this.sound.loop = loop;
       document.body.appendChild(this.sound);
       this.play = function(){
 	  this.sound.play();

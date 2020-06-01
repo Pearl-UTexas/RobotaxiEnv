@@ -32,7 +32,6 @@ EXIST_THREHOLD = 86400 # time in seconds
 @app.route('/init', methods=['POST'])
 def initialize():
 
-    print("server init start")
     req_data = request.get_json(force=True)
 
     # check if the key for the game is present
@@ -92,6 +91,15 @@ def recieve_inputs():
         ret_message = game.update(req_data['next_transition'])
         return jsonify(ret_message)
 
+@app.route('/switch', methods=['POST'])
+def switch():
+    req_data = request.get_json(force=True)
+    # check if the key for the game is present
+    if session[req_data['key']] == None:
+        abort(404, "Game unique key not found. Please refresh the page")
+    else :
+        session[req_data['key']] = Replay()
+        return "Created replay"
 
 # @app.route('/finish', methods=['POST'])
 # def finish():
@@ -130,16 +138,16 @@ def recieve_inputs():
 # 
 #     return 'finished?'
 
-# @app.route('/logging', methods=['POST'])
-# def return_log_data():
-#     # check if the key is within the scope
-#     req_data = request.get_json(force=True)
-# 
-#     if session[req_data['key']] == None:
-#         abort(404, "Game unique key not found. Please refresh the page")
-#     game = session[req_data['key']]
-# 
-#     return jsonify(game.get_log_values())
+@app.route('/logging', methods=['POST'])
+def return_log_data():
+    # check if the key is within the scope
+    req_data = request.get_json(force=True)
+
+    if session[req_data['key']] == None:
+        abort(404, "Game unique key not found. Please refresh the page")
+    game = session[req_data['key']]
+
+    return jsonify(game.get_log_values())
 
 @app.route('/sign_s3/')
 def sign_s3():
@@ -195,9 +203,9 @@ def page():
     #with app.app_context():
     key = ran_gen(16, "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
     #session[key] = RoboTaxi()
-    session[key] = Replay()
+    session[key] = RoboTaxi()
     session['initial_time'] = time.time();
 
     #Fire up the javascript page
     #return render_template("testing_speed.html")
-    return render_template('robotaxi_game.html', key=key, replay=True)
+    return render_template('robotaxi_game.html', key=key)
