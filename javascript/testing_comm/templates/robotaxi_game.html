@@ -1,6 +1,7 @@
 <head>
 
-<title>RoboTaxi</title>    
+<title>RoboTaxi</title>
+<link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
 <canvas id="myCanvas" width="1400" height="700">
 </canvas>
 <video width="0" height="0" id="my-preview"></video>
@@ -16,7 +17,7 @@
 .start_button {
     position: absolute;
     top: 375px;
-    left: 1590px;
+    left: 1593px;
 }
 .replay_instruct {
     position: absolute;
@@ -38,16 +39,18 @@
 
   document.getElementById("replay_start_button").style.visibility = "hidden";
   document.getElementById("replay_instruct").style.visibility = "hidden";
+  document.getElementById("my-preview").volume = 0;
+  document.getElementById("my-preview").muted = true;
   
   const video = document.querySelector('video');
   var canvas = document.getElementById('myCanvas');
   var ctx = canvas.getContext('2d');
   let recorder;
+  let stream;
 
   var key = '{{key}}';
   var json_game_log = {};
   var replay = false;
-  //console.log("Replay: " + replay);
 
   //ctx.globalCompositeOperation = 'destination-over'
   ctx.fillStyle = "gray";
@@ -57,21 +60,22 @@
       video.srcObject = null;
 
       let blob = await recorder.getBlob();
-      console.log("Blob size (bytes): " + blob.size);
 
       video.src = URL.createObjectURL(blob);
-      recorder.stream.getTracks(t => t.stop());
 
-      //console.log(blob);
+      // turn the camera light off
+      recorder.stream.getTracks().forEach(t => t.stop());
+
+      //upload video stream
       var stringname = "audio/webm"
       var keywebmname = key + "recording";
       getSignedRequest(blob, stringname, keywebmname, false);
 
-      // await sleep(3000);
-      // await get_final_log();
+      await sleep(3000);
+
+      //upload logging file
       var logname = "application/json";
       var keyjsonname = key + "logging"
-
       getSignedRequest(json_game_log, logname, keyjsonname, true);
   }
 
@@ -82,7 +86,7 @@
   function getSignedRequest(file, stringname, keyname, isJson){
       var xhr = new XMLHttpRequest();
  
-      xhr.open("GET", "/sign_s3/?file_name="+keyname+"&file_type="+stringname);
+      xhr.open("GET", "/sign_s3?file_name="+keyname+"&file_type="+stringname);
       xhr.onreadystatechange = function(){
           if(xhr.readyState === 4){
               if(xhr.status === 200){
@@ -141,7 +145,7 @@
   async function start_recording_main() {
 
       //specify the stream types wanted
-      let stream = await navigator.mediaDevices.getUserMedia({video: true, audio: {echoCancellation: true}});
+      stream = await navigator.mediaDevices.getUserMedia({video: true, audio: {echoCancellation: true}});
 
       video.srcObject = stream;
       recorder = new RecordRTCPromisesHandler(stream, {
