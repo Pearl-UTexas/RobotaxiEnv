@@ -300,21 +300,6 @@
   //var debug_bool = false;
 
   async function get_render_items() {
-      //var date = new Date();
-      //var temp = date.getTime();
-      // GET is the default method, so we don't need to set it
-      //update info based on json
-      //var date2 = new Date();
-      //console.log(temp);
-      //console.log(date2.getTime());
-      //console.log("round trip: " + (date2.getTime() - temp) + "ms");
-      //if (cycles == 199 && debug_bool == false) {
-      //	  debug_bool = true;
-      //	  for (var i = 0; i < debug_array.length; i++) {
-      //	      console.log(debug_array[i]);
-      //	  }
-      //}
-      //debug_array.push(date2.getTime() - temp);
 
       // GET the states of all the game figures
       // Render said states accordingly
@@ -510,6 +495,8 @@
   }
 
   async function send_inputs() {
+      var date = new Date();
+      var prev_time = date.getTime();
       // POST
       return fetch('/inputs', {
   	      // Specify the method
@@ -542,7 +529,7 @@
 	      x = json.bus[0].x;
 	      y = json.bus[0].y;
 	      orientation = json.bus[0].orientation;
-	      lag_time = json.lag_time;
+	      //lag_time = json.lag_time;
 	      transition = [json.bus[0].transition[0], json.bus[0].transition[1]];
 	      upDirection = json.bus[0].up;
 	      leftDirection = json.bus[0].left;
@@ -555,6 +542,8 @@
 	      if (json.override) {
 		  next_transition = json.next_transition
 	      }
+	      var date2 = new Date();
+	      lag_time = date2.getTime() - prev_time;
 	  });
   }
     async function get_final_log() {
@@ -590,6 +579,9 @@
       // stop video stream if in the replay phase
       if (replay == true) {
 	  await stop_recording_main();
+	  ctx.font = 'normal bold 36px serif';
+	  ctx.fillText("Thank you for your participation!", C_WIDTH, C_HEIGHT / 2 - 120); 
+	  ctx.fillText("Generating key...", C_WIDTH, C_HEIGHT / 2 - 70); 
       }
   }
 
@@ -649,22 +641,15 @@
   var updated = false;
 
   async function until_finished() {
-      //var temp = 0;
-      //if (updated == true) {
-      //	  updated = false;
-      //	  temp = lag_time;
-      //}
-      //console.log("before render: " + transition);
       await get_render_items();
-      //console.log("after render: " + transition);
-      //console.log(finished);
       if (!finished) {
-	  //temp = DELAY - lag_time - temp;
-	  //if (lag_time < 0) {
-	  //    temp = 0;
-	  //}
-	  //console.log("lag_time: " + (lag_time + temp));
-	  temp = DELAY;
+	  var temp = DELAY - lag_time;
+	  if (temp < 0) {
+	      temp = 0;
+	  }
+	  if (lag_time > 0) {
+	      lag_time = 0;
+	  }
 	  await new Promise(r => setTimeout("until_finished()", temp));
       }
       else {
@@ -691,11 +676,11 @@
 	      replay = true;
 	      // record this game's log
 	      await get_final_log();
-	      console.log(json_game_log);
 
 	      // switch the server to load in replay
 	      await switch_to_replay();
 
+	      //toggle replay buttons
 	      await make_replay_visible();
 	  }
       }

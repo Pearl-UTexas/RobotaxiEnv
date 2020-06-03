@@ -24,8 +24,10 @@ import boto3
 app = Flask(__name__)
 SESSION_TYPE = 'filesystem'
 app.config.from_object(__name__)
-#log = logging.getLogger('werkzeug')
-#log.disabled = True
+
+# to disable the console from printing out anything
+# log = logging.getLogger('werkzeug')
+# log.disabled = True
 Session(app)
 EXIST_THREHOLD = 86400 # time in seconds
 
