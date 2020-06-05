@@ -54,10 +54,11 @@
       this.disabled = true;
 
       //specify the stream types wanted
-      let stream = await navigator.mediaDevices.getUserMedia({video: false, audio: true});
+      let stream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
 
       video.srcObject = stream;
       recorder = new RecordRTCPromisesHandler(stream, {
+	  type: 'video',
 	  type: 'audio'
       });
 
