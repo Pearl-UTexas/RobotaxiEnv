@@ -1,0 +1,732 @@
+<head>
+
+<title>RoboTaxi</title>
+<link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+<canvas id="myCanvas" width="1400" height="700">
+</canvas>
+<video width="0" height="0" id="my-preview"></video>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+<script src="https://www.WebRTC-Experiment.com/RecordRTC.js"></script>
+<script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+<style>
+.screenshot {
+    position: absolute;
+    top: 1px;
+    left: 1px;
+}
+.start_button {
+    position: absolute;
+    top: 375px;
+    left: 1593px;
+}
+.replay_instruct {
+    position: absolute;
+    top: 150px;
+    left: 415px;
+}
+.replay_start_button {
+    position: absolute;
+    top: 300px;
+    left: 638px;
+}
+</style>
+
+<img src="static/start_screen.png" alt="example screenshot" class="screenshot" id="ss_picture">
+<button id="start_button" onclick="this.disabled=true; init_game()" class="start_button">Start game!</button>
+<button id="replay_start_button" onclick="this.disabled=true; replay_init_game()" class="replay_start_button">Start replay game!</button>
+<img src="static/replay_instruct.png" alt="replay_instruct" class="replay_instruct" id="replay_instruct">
+<script>
+
+  document.getElementById("replay_start_button").style.visibility = "hidden";
+  document.getElementById("replay_instruct").style.visibility = "hidden";
+  document.getElementById("my-preview").volume = 0;
+  document.getElementById("my-preview").muted = true;
+  
+  const video = document.querySelector('video');
+  var canvas = document.getElementById('myCanvas');
+  var ctx = canvas.getContext('2d');
+  let recorder;
+  let stream;
+
+  var key = '{{key}}';
+  var json_game_log = {};
+  var replay = false;
+
+  //ctx.globalCompositeOperation = 'destination-over'
+  ctx.fillStyle = "gray";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  async function stopRecordingCallback() {
+      video.srcObject = null;
+
+      let blob = await recorder.getBlob();
+
+      video.src = URL.createObjectURL(blob);
+
+      // turn the camera light off
+      recorder.stream.getTracks().forEach(t => t.stop());
+
+      //upload video stream
+      var stringname = "audio/webm"
+      var keywebmname = key + "recording";
+      getSignedRequest(blob, stringname, keywebmname, false);
+
+      await sleep(3000);
+
+      //upload logging file
+      var logname = "application/json";
+      var keyjsonname = key + "logging"
+      getSignedRequest(json_game_log, logname, keyjsonname, true);
+  }
+
+  const sleep = (milliseconds) => {
+      return new Promise(resolve => setTimeout(resolve, milliseconds))
+  }
+
+  function getSignedRequest(file, stringname, keyname, isJson){
+      var xhr = new XMLHttpRequest();
+ 
+      xhr.open("GET", "/sign_s3?file_name="+keyname+"&file_type="+stringname);
+      xhr.onreadystatechange = function(){
+          if(xhr.readyState === 4){
+              if(xhr.status === 200){
+		  //console.log('working');
+                  var response = JSON.parse(xhr.responseText);
+                  uploadFile(file, response.data, response.url, response, isJson);
+              }
+              else{
+                  alert("Could not get signed URL.");
+              }
+          }   
+      };
+      xhr.send();
+  }
+
+  function uploadFile(file, s3Data, url, confirm, isJson){
+      var xhr = new XMLHttpRequest();
+      xhr.open("POST", s3Data.url);
+
+      var postData = new FormData();
+      for(s3key in s3Data.fields){
+          postData.append(s3key, s3Data.fields[s3key]);
+      }
+      //console.log('postData');
+      //console.log(postData)
+      if (isJson) {
+          postData.append('file', JSON.stringify(file));
+
+      } else {
+          //console.log('is a webm file in upload file');
+          postData.append('file', file);
+      }
+      // Display the key/value pairs
+      //for (var pair of postData.entries()) {
+      //    console.log(pair[0]+ ', ' + pair[1]); 
+      //}
+
+      xhr.send(postData);
+      if (isJson) {
+          alert("Enter the following string into mechanical turk: " + key);
+      }
+  }
+  // async function xhr(url, data, callback) {
+  //     console.log('calling xhr');
+  //     var request = new XMLHttpRequest();
+  //     request.onreadystatechange = function () {
+  // 	  if (request.readyState == 4 ** request.status == 200) {
+  // 	      callback(location.href + request.responseText);
+  // 	  }
+  //     };
+  //     request.open('POST', url);
+  //     request.send(data);
+  // }
+
+  // start recording after clicking (reccomended to not play around with this too much)
+  async function start_recording_main() {
+
+      //specify the stream types wanted
+      stream = await navigator.mediaDevices.getUserMedia({video: true, audio: {echoCancellation: true}});
+
+      video.srcObject = stream;
+      recorder = new RecordRTCPromisesHandler(stream, {
+	  type: 'video'
+      });
+
+      await recorder.startRecording();
+
+      recorder.stream = stream;
+  };
+
+  // stop recording after clicking (reccomended to not play around with this too much)
+  async function stop_recording_main() {
+      // weird recorder bug, hence if statement
+      if (recorder != null) {
+	  await recorder.stopRecording();
+	  // send the information back
+	  stopRecordingCallback();
+      }
+  };
+
+
+  //game variables and constants
+  // C_WIDTH and C_HEIGHT describe the dimensions of the canvas
+  // score keeps track of the game's score
+  // cycles describes the current timestep and max_cycles describes the duration of the cycle
+  // DOT_SIZE is the dimensions of one cell in the 8x8 grid
+  // map_size_x and map_size_y describe the dimensions of the game itself
+  var C_WIDTH, C_HEIGHT, score, cycles, max_cycles, DOT_SIZE, map_size_x, map_size_y;
+  // keep track of the direction the bus will be traveling
+  var leftDirection = false;
+  var rightDirection = true;
+  var upDirection = false;
+  var downDirection = false;
+  //finished denotes if the game can move onto the next timestep
+  var finished = false;
+  var replay = false;     // if the client is playing (false) or watching (true)
+  var lag_time = 0; //in milliseconds
+  // records the orientation of the bus in the next timestep. Changes if user input overrides this
+  var next_transition = [1, 0];
+  // x, y location of the bus on the canvas
+  var x, y;
+  // transition keeps track of the incrementes between renders for the current timestep
+  let transition;
+  // orientation describes the rotation of the bus (0: up, 1: left, 2: down, 3: right)
+  var orientation;
+  // keeps track of the values 
+  var delta_score = 0;
+  const INC_VAL = 10;
+  // key values denote the numeric values associated with the arrow keys
+  const LEFT_KEY = 37;
+  const RIGHT_KEY = 39;
+  const UP_KEY = 38;
+  const DOWN_KEY = 40;
+  const SPACE_KEY = 32;
+  // delay is the amount of time between render calls
+  const DELAY = 110;
+
+  // instantiate all of the images accordingly
+  var auto_bus_north = new Image(); 
+  auto_bus_north.src = 'static/auto_bus_north.png';
+
+  var auto_bus_west  = new Image();
+  auto_bus_west.src = 'static/auto_bus_west.png';
+
+  var auto_bus_south = new Image();
+  auto_bus_south.src = 'static/auto_bus_south.png';
+
+  var auto_bus_east  = new Image(); 
+  auto_bus_east.src = 'static/auto_bus_east.png';
+
+  var forest = new Image();
+  forest.src = 'static/forest.png';
+
+  var man = new Image();
+  man.src = 'static/cool_man.png';
+
+  var dollar = new Image();
+  dollar.src = 'static/dollar.png';
+
+  var road_block = new Image();
+  road_block.src = 'static/road_block.png';
+
+  var road_block_broken = new Image();
+  road_block_broken.src = 'static/road_block_broken.png';
+
+  var purple_car = new Image();
+  purple_car.src = 'static/purple_car.png';
+
+  var broken_purple_car = new Image();
+  broken_purple_car.src = 'static/broken_purple_car.png';
+
+  var road_block_crash_sound = new sound("static/road_block_crash.wav", false);
+  var road_block_sound_bool = false;
+
+  var good_sound = new sound("static/good.wav", false);
+  var good_sound_bool = false;
+
+  var car_crash_sound = new sound("static/car_crash.wav", false);
+  var car_crash_sound_bool = false;
+
+  var background_music = new sound("static/background1.mp3", true);
+
+  var begin_music = new sound("static/begin.wav", false);
+
+  async function switch_to_replay() {
+	return fetch('/switch', {
+	    method: 'POST',
+	    body: JSON.stringify({
+	    "key" : key
+	    })});
+  }
+
+  async function get_initial_values() {
+      return fetch('/init', {
+  	      method: 'POST',
+  	      body: JSON.stringify({
+		  "key" : key
+  	      })
+	  }).then(function (response) {
+  	      return response.json();
+	  }).then(async function (json) {
+  	      C_WIDTH = json.C_WIDTH;
+  	      C_HEIGHT = json.C_HEIGHT;
+  	      score = json.score;
+  	      cycles = json.cycles;
+  	      max_cycles = json.max_cycle;
+	      x = json.bus.x;
+	      y = json.bus.y;
+	      map_size_x = json.map_size_x;
+	      map_size_y = json.map_size_y;
+	      DOT_SIZE = json.dot_size;
+	      x = json.bus[0].x;
+	      y = json.bus[0].y;
+	      orientation = json.bus[0].orientation;
+	      lag_time = json.lag_time;
+	      transition = [json.bus[0].transition[0], json.bus[0].transition[1]];
+	      upDirection = json.bus[0].up;
+	      leftDirection = json.bus[0].left;
+	      downDirection = json.bus[0].down;
+	      rightDirection = json.bus[0].right;
+	      score = json.score;
+	      map = json.map;
+	      accident_tracker = json.accident_tracker;
+	      if (json.override) {
+		  next_transition = json.next_transition
+	      }
+	  });
+  };
+
+  //let debug_array = [];
+  //var debug_bool = false;
+
+  async function get_render_items() {
+
+      // GET the states of all the game figures
+      // Render said states accordingly
+
+      ctx.clearRect(0, 0, C_WIDTH * 2, C_HEIGHT);
+      ctx.fillStyle = "gray";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = 'black';
+      ctx.textBaseline = 'middle'; 
+      ctx.textAlign = 'center'; 
+
+      //add font functionality later
+      ctx.font = 'normal bold 40px serif';
+
+      //create basic rendering of the right side of the screen
+      ctx.fillText('EARNINGS', C_WIDTH + 200, C_HEIGHT / 2 + 100)
+      
+      ctx.font = 'normal bold 50px serif';
+
+      //render the different point values for obtaining/crashing a certain object
+      ctx.drawImage(man, C_WIDTH + 50, C_HEIGHT / 2 - 300);
+      ctx.fillText("+6", C_WIDTH + 250, C_HEIGHT / 2 - 250);
+
+      ctx.drawImage(road_block, C_WIDTH + 50, C_HEIGHT / 2 - 200);
+      ctx.fillText("-1", C_WIDTH + 250, C_HEIGHT / 2 - 150);
+
+      ctx.drawImage(purple_car, C_WIDTH + 50, C_HEIGHT / 2 - 100);
+      ctx.fillText("-5", C_WIDTH + 250, C_HEIGHT / 2 - 50);
+
+      ctx.font = 'normal bold 28px serif';
+      ctx.fillText("$0", 1275, C_HEIGHT / 2 + 2);
+
+      var temp_brown_size = 2 * score
+      var temp_delta_size = 2 * delta_score
+
+      //right side box brown
+      ctx.fillStyle = '#A0522D';
+      ctx.fillRect(1152, C_HEIGHT / 2 - temp_brown_size, 98, temp_brown_size);
+
+      //render the box where the score is displayed and the bar to the left of the game
+      if (delta_score == 6) {
+	  ctx.fillStyle = 'green';
+      }
+      else if (delta_score == -5) {
+	  ctx.fillStyle = 'red';
+      }
+      else if (delta_score == -1) {
+	  ctx.fillStyle = 'yellow';
+      }
+      else {
+	  ctx.fillStyle = '#A0522D';
+      }
+
+      ctx.fillRect(1152, C_HEIGHT / 2 - temp_brown_size, 98, temp_delta_size);
+
+      //score box
+      ctx.fillRect(C_WIDTH + 138, C_HEIGHT / 2 + 125, 125, 50);
+
+      //render bar to the left of the game
+      ctx.fillStyle = 'black';
+      ctx.fillRect(1146, C_HEIGHT / 2, 112, 6);
+
+      //render the score
+      ctx.font = 'normal bold 50px serif';
+      if (score < 0)
+	  ctx.fillText('-$' + (-1 * score), C_WIDTH + 200, C_HEIGHT / 2 + 150)
+      else
+	  ctx.fillText('$' + score, C_WIDTH + 200, C_HEIGHT / 2 + 150)
+
+      //render the timestep/cycle information
+      ctx.fillText('Time', C_WIDTH + 200, C_HEIGHT / 2 + 225)
+      ctx.font = 'normal bold 24px serif';
+      ctx.fillText(cycles + "/" + max_cycles, C_WIDTH + 200, C_HEIGHT / 2 + 260)
+
+      //render the bus
+      if (orientation == 0) {
+	  ctx.drawImage(auto_bus_north, x + transition[0], y + transition[1])
+      }
+      else if (orientation == 1) {
+	  ctx.drawImage(auto_bus_west,  x + transition[0], y + transition[1])
+      }
+      else if (orientation == 2) {
+	  ctx.drawImage(auto_bus_south, x + transition[0], y + transition[1])
+      }
+      else if (orientation == 3) {
+	  ctx.drawImage(auto_bus_east,  x + transition[0], y + transition[1])
+      }
+
+      //render the other images/obstacles over the bus
+      for (var j = 0; j < map[0].length; j++) {
+	  for (var i = 0; i < map.length; i++) {
+	      //check for dot first because of runtime efficency
+	      if (map[i][j] != '.') {
+		  //draw whatever extra images you want
+		  if (map[i][j] == '#') {
+		      ctx.drawImage(forest, i * DOT_SIZE, j * DOT_SIZE);
+		  }
+		  if (map[i][j] == 'P') {
+		      if (accident_tracker[i][j] <= 0)
+			  ctx.drawImage(man, i * DOT_SIZE, j * DOT_SIZE);
+		      else {
+			  ctx.drawImage(dollar, i * DOT_SIZE, j * DOT_SIZE);
+			  if (accident_tracker[i][j] == 3 && good_sound_bool == false) {
+			      good_sound.play();
+			      good_sound_bool = true;
+			  }
+		      }
+		  }
+		  if (map[i][j] == 'B') {
+		      if (accident_tracker[i][j] <= 0)
+			  ctx.drawImage(road_block, i * DOT_SIZE, j * DOT_SIZE);
+		      else {
+			  ctx.drawImage(road_block_broken, i * DOT_SIZE, j * DOT_SIZE);
+			  if (accident_tracker[i][j] == 3 && road_block_sound_bool == false) {
+			      road_block_crash_sound.play();
+			      road_block_sound_bool = true;
+			  }
+		      }
+		  }
+		  if (map[i][j] == 'C') {
+		      if (accident_tracker[i][j] <= 0)
+			  ctx.drawImage(purple_car, i * DOT_SIZE, j * DOT_SIZE);
+		      else {
+			  ctx.drawImage(broken_purple_car, i * DOT_SIZE, j * DOT_SIZE);
+			  if (accident_tracker[i][j] == 3 && car_crash_sound_bool == false) {
+			      car_crash_sound.play();
+			      car_crash_sound_bool = true;
+			  }
+		      }
+		  }
+	      }
+	  }
+      }
+      await move();
+      return;
+  }
+
+  async function move() {
+      if (transition[0] < 0) {
+          orientation = 1;
+          await update_increments();
+          if (Math.abs(transition[0]) > DOT_SIZE) {
+	      finished = true;
+              x -= DOT_SIZE;
+          }
+      }
+      else if (transition[0] > 0) {
+	  //going to the right
+          orientation = 3;
+          await update_increments();
+          if (Math.abs(transition[0]) > DOT_SIZE ) {
+	      finished = true;
+              x += DOT_SIZE;
+          }
+      }
+      else if (transition[1] < 0) {
+	  //going up
+          orientation = 0;
+          await update_increments();
+          if (Math.abs(transition[1]) > DOT_SIZE) {
+	      finished = true;
+              y -= DOT_SIZE;
+          }
+      }
+      else if (transition[1] > 0) {
+	  //going down
+          orientation = 2;
+          await update_increments();
+          if (Math.abs(transition[1]) > DOT_SIZE ) {
+	      finished = true;
+              y += DOT_SIZE;
+          }
+      }
+  }
+
+  async function update_increments() {
+      if (transition[0] == 0 && transition[1] < 0) {
+	  //going up
+          transition[1] -= INC_VAL;
+      }
+      else if (transition[0] == 0 && transition[1] > 0) {
+	  //going down
+          transition[1] += INC_VAL;
+      }
+      else if (transition[0] > 0 && transition[1] == 0) {
+	  //going to the right
+          transition[0] += INC_VAL;
+      }
+      else if (transition[0] < 0 && transition[1] == 0) {
+	  //going to the left
+          transition[0] -= INC_VAL;
+      }
+  }
+
+  async function send_inputs() {
+      var date = new Date();
+      var prev_time = date.getTime();
+      // POST
+      return fetch('/inputs', {
+  	      // Specify the method
+  	      method: 'POST',
+  	      // A JSON payload
+  	      body: JSON.stringify({
+  		  //Send the any keyboard input
+		  "key" : key,
+		  "orientation" : orientation,
+		  "transition" : transition,
+		  "x" : x,
+		  "y" : y,
+		  "up" : upDirection,
+		  "left" : leftDirection,
+		  "down" : downDirection,
+		  "right" : rightDirection,
+		  "score" : score,
+		  "map" : map,
+		  "accident_tracker" : accident_tracker,
+  		  "next_transition" : next_transition,
+		  //video/audio?
+  		  //also current state of the game?
+  	      })
+	  }).then(function (response) {
+  	      return response.json();
+	  }).then(function (json) {
+	      //json_game_log[cycles.toString()] = json;
+
+	      // transfer game state change after timestep increases
+	      x = json.bus[0].x;
+	      y = json.bus[0].y;
+	      orientation = json.bus[0].orientation;
+	      //lag_time = json.lag_time;
+	      transition = [json.bus[0].transition[0], json.bus[0].transition[1]];
+	      upDirection = json.bus[0].up;
+	      leftDirection = json.bus[0].left;
+	      downDirection = json.bus[0].down;
+	      rightDirection = json.bus[0].right;
+	      delta_score = json.score - score;
+	      score = json.score;
+	      map = json.map;
+	      accident_tracker = json.accident_tracker;
+	      if (json.override) {
+		  next_transition = json.next_transition
+	      }
+	      var date2 = new Date();
+	      lag_time = date2.getTime() - prev_time;
+	  });
+  }
+    async function get_final_log() {
+	// GET is the default method, so we don't need to set it
+	return fetch('/logging', {
+	    method: 'POST',
+	    body: JSON.stringify({
+	    "key" : key
+	    })}).then(function (response) {
+		return response.json();
+	    }).then(function (json) {
+		json_game_log = json;
+	});
+    }
+
+  async function render_end() {
+      //render the game when the maximum amount of steps has been done
+      ctx.clearRect(0, 0, C_WIDTH * 2, C_HEIGHT);
+      ctx.fillStyle = "gray";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = 'black';
+      ctx.textBaseline = 'middle'; 
+      ctx.textAlign = 'center'; 
+      ctx.font = 'normal bold 50px serif';
+
+      //basically putting the minus sign in the right spot
+      ctx.fillText("Finished " + cycles + " steps", C_WIDTH, 50); 
+      if (score < 0)
+	  ctx.fillText('Score: -$' + (-1 * score), C_WIDTH, C_HEIGHT/2 + 45);
+      else
+	  ctx.fillText('Score: $' + score, C_WIDTH, C_HEIGHT/2 + 45);
+
+      // stop video stream if in the replay phase
+      if (replay == true) {
+	  await stop_recording_main();
+	  ctx.font = 'normal bold 36px serif';
+	  ctx.fillText("Thank you for your participation!", C_WIDTH, C_HEIGHT / 2 - 120); 
+	  ctx.fillText("Generating key...", C_WIDTH, C_HEIGHT / 2 - 70); 
+      }
+  }
+
+  async function destroy_instructions() {
+      var img = document.getElementById("ss_picture");
+      img.parentNode.removeChild(img);
+
+      var button = document.getElementById("start_button");
+      button.parentNode.removeChild(button);
+  }
+
+  async function destroy_replay_instruct() {
+      var img = document.getElementById("replay_instruct");
+      img.parentNode.removeChild(img);
+
+      var button = document.getElementById("replay_start_button");
+      button.parentNode.removeChild(button);
+  }
+
+  async function make_replay_visible() {
+      document.getElementById("replay_start_button").style.visibility = "visible";
+      document.getElementById("replay_instruct").style.visibility = "visible";
+  }
+
+  async function init_game() {
+      // destroy button and instructions
+      await destroy_instructions();
+
+      // get_init_values for the robotaxi
+      await get_initial_values();
+
+      // play music
+      background_music.play();
+      begin_music.play();
+
+      // start the actual game
+      await game_cycle();
+  }
+
+  async function replay_init_game() {
+
+      await destroy_replay_instruct();
+
+      await start_recording_main();    // start the video/audio recordings
+
+      // get_init_values for the robotaxi
+      await get_initial_values();
+
+      // play music
+      background_music.play();
+      begin_music.play();
+
+      // start the actual game
+      await game_cycle();
+  }
+
+  var updated = false;
+
+  async function until_finished() {
+      await get_render_items();
+      if (!finished) {
+	  var temp = DELAY - lag_time;
+	  if (temp < 0) {
+	      temp = 0;
+	  }
+	  if (lag_time > 0) {
+	      lag_time = 0;
+	  }
+	  await new Promise(r => setTimeout("until_finished()", temp));
+      }
+      else {
+	  finished = false;
+      	  cycles += 1;
+	  good_sound_bool = false;
+	  road_block_sound_bool = false;
+	  car_crash_sound_bool = false;
+	  await game_cycle();
+      }
+      return 0;
+  }
+
+  async function game_cycle() {
+      if (cycles < max_cycles) {
+      	  await send_inputs();
+	  updated = true;
+	  var throwaway = await until_finished();
+      }
+      else {
+	  background_music.stop();
+	  await render_end();
+	  if (replay == false) {
+	      replay = true;
+	      // record this game's log
+	      await get_final_log();
+
+	      // switch the server to load in replay
+	      await switch_to_replay();
+
+	      //toggle replay buttons
+	      await make_replay_visible();
+	  }
+      }
+  }
+
+  //init_game();
+  //render_end();
+
+  //Get keyboard input
+  onkeydown = function(e) {
+      var key = e.keyCode;
+      var tempX = x / DOT_SIZE;
+      var tempY = y / DOT_SIZE;
+
+      if ((key == LEFT_KEY) && (!rightDirection) && (tempX > 1)) {
+      	  next_transition = [-1, 0];
+      }
+      else if ((key == RIGHT_KEY) && (!leftDirection) && (tempX < map_size_x - 2)) {
+      	  next_transition = [1, 0];
+      }
+      else if ((key == UP_KEY) && (!downDirection) && (tempY > 1)) {
+      	  next_transition = [0, -1];
+      }
+      else if ((key == DOWN_KEY) && (!upDirection) && (tempY < map_size_y - 2)) {
+      	  next_transition = [0, 1];
+      }
+  }
+
+  function sound(src, loop) {
+      this.sound = document.createElement("audio");
+      this.sound.src = src;
+      this.sound.setAttribute("preload", "auto");
+      this.sound.setAttribute("controls", "none");
+      this.sound.style.display = "none";
+      this.sound.loop = loop;
+      document.body.appendChild(this.sound);
+      this.play = function(){
+	  this.sound.play();
+      }
+      this.stop = function(){
+	  this.sound.pause();
+      }
+  } 
+
+</script>
+  
+</head>
+
+</html>

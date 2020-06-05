@@ -1,4 +1,3 @@
-<!script src="https://cdn.webrtc-experiment.com/RecordRTC.js"><!/script>
 <script src="https://www.WebRTC-Experiment.com/RecordRTC.js"></script>
 
 <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
@@ -12,7 +11,7 @@
 
 
 <script>
-
+  
   const video = document.querySelector('video');
   let recorder;
 
@@ -27,7 +26,7 @@
       console.log(blob);
 
       var formData = new FormData();
-      formData.append('key', URL.createObjectURL(blob));
+      formData.append('video-blob', blob);
 
       xhr('/finish', formData, function (fName) {
 	  console.log("Video successfully uploaded!");
@@ -44,33 +43,43 @@
 	  }
       };
       console.log('sending over...');
+      console.log(data);
       request.open('POST', url);
       request.send(data);
   }
 
+  // start recording after clicking (reccomended to not play around with this too much)
   document.getElementById('btn-start-recording').onclick = async function() {
+      // update this button
       this.disabled = true;
+
+      //specify the stream types wanted
       let stream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
 
       video.srcObject = stream;
       recorder = new RecordRTCPromisesHandler(stream, {
-	  type: 'video'
+	  type: 'video',
+	  type: 'audio'
       });
 
       await recorder.startRecording();
 
       recorder.stream = stream;
 
+      // update other button
       document.getElementById('btn-stop-recording').disabled = false;
-      console.log('recorder state: ', await recorder.getState());
   };
 
+  // stop recording after clicking (reccomended to not play around with this too much)
   document.getElementById('btn-stop-recording').onclick = async function() {
       this.disabled = true;
       await recorder.stopRecording();
+      // send the information back
       stopRecordingCallback();
       document.getElementById('btn-start-recording').disabled = false;
   };
+
+  // Note: XMLHTTPRequests and fetch both work. below is fetch
   
   //// GET is the default method, so we don't need to set it
   //fetch('/RL')
@@ -104,8 +113,5 @@
   //}).then(function (text) {
   //    
   //    console.log('POST response: ');
-
-  //    // Should be 'OK' if everything was successful
-  //    console.log(text);
   //});
 </script>

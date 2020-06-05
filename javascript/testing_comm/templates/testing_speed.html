@@ -1,0 +1,82 @@
+<html>
+<head>
+<title>RoboTaxi</title>    
+<canvas id="myCanvas" width="1400" height="700">
+</canvas>
+<video id="my-preview" controls autoplay></video>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+<script src="https://www.WebRTC-Experiment.com/RecordRTC.js"></script>
+<script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+<script>
+
+  // const video = document.querySelector('video');
+  // var canvas = document.getElementById('myCanvas');
+  // var ctx = canvas.getContext('2d');
+  // let recorder;
+
+  // async function stopRecordingCallback() {
+  //     video.srcObject = null;
+
+  //     let blob = await recorder.getBlob();
+
+  //     video.src = URL.createObjectURL(blob);
+  //     recorder.stream.getTracks(t => t.stop());
+  // }
+
+  // async function start_recording_main() {
+
+  //     //specify the stream types wanted
+  //     let stream = await navigator.mediaDevices.getUserMedia({video: true, audio: {echoCancellation: true}});
+
+  //     video.srcObject = stream;
+  //     recorder = new RecordRTCPromisesHandler(stream, {
+  // 	  type: 'video'
+  //     });
+
+  //     await recorder.startRecording();
+
+  //     recorder.stream = stream;
+  // };
+
+  // // stop recording after clicking (reccomended to not play around with this too much)
+  // async function stop_recording_main() {
+  //     // weird recorder bug, hence if statement
+  //     if (recorder != null) {
+  // 	  await recorder.stopRecording();
+  // 	  // send the information back
+  // 	  stopRecordingCallback();
+  //     }
+  // };
+
+   async function testing_ping() {
+       return fetch('/testing_ping', {
+   	      method: 'GET'
+   	  }).then(function (response) {
+   	      return response.json();
+   	  }).then(async function (json) {
+   	      console.log(json.time);
+   	  });
+   };
+
+  var cycles = 0;
+  async function game_cycle() {
+      if (cycles == 0) {
+	  // await start_recording_main();
+      }
+      if (cycles < 50) {
+	  cycles += 1;
+      	  await testing_ping();
+	  await game_cycle();
+      }
+      else {
+	  // await stop_recording_main();
+      }
+  }
+
+  game_cycle();
+
+</script>
+  
+</head>
+
+</html>
