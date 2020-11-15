@@ -1,4 +1,4 @@
-# RoboTaxi User Study Environment
+# Robotaxi User Study Environment
 (Game Logic Modified from repository: [snake-ai-reinforcement](https://github.com/YuriyGuts/snake-ai-reinforcement))
 
 
@@ -13,7 +13,8 @@
 $ python3 -m pip install --upgrade -r requirements.txt
 ```
 
-## Play RoboTaxi
+## Play Robotaxi
+
 The behavior of the agent can be tested either in batch CLI mode where the agent plays a set of episodes and outputs summary statistics, or in GUI mode where you can see each individual step and action.
 
 To test the agent in batch CLI mode, run the following command and check the generated **.csv** file:
