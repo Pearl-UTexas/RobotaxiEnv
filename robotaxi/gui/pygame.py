@@ -6,10 +6,14 @@ import cv2
 import os
 
 import threading
-
+import robotaxi
 from robotaxi.agent import HumanAgent
 from robotaxi.gameplay.entities import (CellType, SnakeAction, SnakeDirection, ALL_SNAKE_DIRECTIONS, ALL_SNAKE_ACTIONS, SNAKE_GROW, WALL_WARP, Point)
 from robotaxi.gameplay.environment import PLAY_SOUND
+
+robotaxi_path = os.path.dirname(robotaxi.gameplay.environment.__file__)
+#print(robotaxi_path)
+
 
 frame_ct = -1
 
@@ -77,13 +81,14 @@ class PyGameGUI:
         pygame.mixer.init()
         
         pygame.mouse.set_visible(False)
-        self.punch_sound = pygame.mixer.Sound('sound/punch.wav')
-        self.begin_sound = pygame.mixer.Sound('sound/begin.wav')
-        self.good_sound = pygame.mixer.Sound('sound/good.wav')
-        self.bad_sound = pygame.mixer.Sound('sound/road_block_crash.wav')
-        self.very_bad_sound = pygame.mixer.Sound('sound/car_crash.wav')
-        self.stuck_sound = pygame.mixer.Sound('sound/woop.wav')
-        self.free_sound = pygame.mixer.Sound('sound/restart.wav')
+        self.base_dir = robotaxi_path + '/../../'
+        self.punch_sound = pygame.mixer.Sound(self.base_dir+'sound/punch.wav')
+        self.begin_sound = pygame.mixer.Sound(self.base_dir+'sound/begin.wav')
+        self.good_sound = pygame.mixer.Sound(self.base_dir+'sound/good.wav')
+        self.bad_sound = pygame.mixer.Sound(self.base_dir+'sound/road_block_crash.wav')
+        self.very_bad_sound = pygame.mixer.Sound(self.base_dir+'sound/car_crash.wav')
+        self.stuck_sound = pygame.mixer.Sound(self.base_dir+'sound/woop.wav')
+        self.free_sound = pygame.mixer.Sound(self.base_dir+'sound/restart.wav')
         self.agent = HumanAgent()
         self.collaborating_agent = None
         self.env = None
@@ -111,54 +116,54 @@ class PyGameGUI:
         
         self.test = test
 
-        self.spawn_icon = pygame.transform.scale(pygame.image.load("icon/wave.png"),(self.CELL_SIZE, self.CELL_SIZE))
-        self.wall_icon = pygame.transform.scale(pygame.image.load("icon/forest.png"),(self.CELL_SIZE, self.CELL_SIZE))
-        self.good_fruit_icon = pygame.transform.scale(pygame.image.load("icon/man.png"),(self.CELL_SIZE*2//3, self.CELL_SIZE*2//3))
-        self.bad_fruit_icon = pygame.transform.scale(pygame.image.load("icon/road_block.png"),(self.CELL_SIZE*2//3, self.CELL_SIZE*2//3))
-        self.lava_icon = pygame.transform.scale(pygame.image.load("icon/purple_car.png"),(self.CELL_SIZE, self.CELL_SIZE))
-        self.small_crash_icon = pygame.transform.scale(pygame.image.load("icon/road_block_broken.png"),(self.CELL_SIZE*2//3, self.CELL_SIZE*2//3))
-        self.big_crash_icon = pygame.transform.scale(pygame.image.load("icon/broken_purple_car.png"),(self.CELL_SIZE, self.CELL_SIZE*2//3))
-        self.reward_icon = pygame.transform.scale(pygame.image.load("icon/dollar.png"),(self.CELL_SIZE//3, self.CELL_SIZE//3))
+        self.spawn_icon = pygame.transform.scale(pygame.image.load(self.base_dir+"icon/wave.png"),(self.CELL_SIZE, self.CELL_SIZE))
+        self.wall_icon = pygame.transform.scale(pygame.image.load(self.base_dir+"icon/forest.png"),(self.CELL_SIZE, self.CELL_SIZE))
+        self.good_fruit_icon = pygame.transform.scale(pygame.image.load(self.base_dir+"icon/man.png"),(self.CELL_SIZE*2//3, self.CELL_SIZE*2//3))
+        self.bad_fruit_icon = pygame.transform.scale(pygame.image.load(self.base_dir+"icon/road_block.png"),(self.CELL_SIZE*2//3, self.CELL_SIZE*2//3))
+        self.lava_icon = pygame.transform.scale(pygame.image.load(self.base_dir+"icon/purple_car.png"),(self.CELL_SIZE, self.CELL_SIZE))
+        self.small_crash_icon = pygame.transform.scale(pygame.image.load(self.base_dir+"icon/road_block_broken.png"),(self.CELL_SIZE*2//3, self.CELL_SIZE*2//3))
+        self.big_crash_icon = pygame.transform.scale(pygame.image.load(self.base_dir+"icon/broken_purple_car.png"),(self.CELL_SIZE, self.CELL_SIZE*2//3))
+        self.reward_icon = pygame.transform.scale(pygame.image.load(self.base_dir+"icon/dollar.png"),(self.CELL_SIZE//3, self.CELL_SIZE//3))
         self.curr_icon = None
         self.curr_icon_collaborator = None
-        self.question1_icon = pygame.transform.scale(pygame.image.load("icon/question1.png"),(self.CELL_SIZE*2//3, self.CELL_SIZE*2//3))
-        self.question2_icon = pygame.transform.scale(pygame.image.load("icon/question2.png"),(self.CELL_SIZE*2//3, self.CELL_SIZE*2//3))
-        self.question3_icon = pygame.transform.scale(pygame.image.load("icon/question3.png"),(self.CELL_SIZE*2//3, self.CELL_SIZE*2//3))
-        self.pit_icon = pygame.transform.scale(pygame.image.load("icon/stopped.png"),(self.CELL_SIZE, self.CELL_SIZE))
-        self.stop_icon = pygame.transform.scale(pygame.image.load("icon/stopped.png"),(self.CELL_SIZE//3, self.CELL_SIZE//3))
-        self.accident_icon = pygame.transform.scale(pygame.image.load("icon/mad.png"),(self.CELL_SIZE*2//3, self.CELL_SIZE*2//3))
+        self.question1_icon = pygame.transform.scale(pygame.image.load(self.base_dir+"icon/question1.png"),(self.CELL_SIZE*2//3, self.CELL_SIZE*2//3))
+        self.question2_icon = pygame.transform.scale(pygame.image.load(self.base_dir+"icon/question2.png"),(self.CELL_SIZE*2//3, self.CELL_SIZE*2//3))
+        self.question3_icon = pygame.transform.scale(pygame.image.load(self.base_dir+"icon/question3.png"),(self.CELL_SIZE*2//3, self.CELL_SIZE*2//3))
+        self.pit_icon = pygame.transform.scale(pygame.image.load(self.base_dir+"icon/stopped.png"),(self.CELL_SIZE, self.CELL_SIZE))
+        self.stop_icon = pygame.transform.scale(pygame.image.load(self.base_dir+"icon/stopped.png"),(self.CELL_SIZE//3, self.CELL_SIZE//3))
+        self.accident_icon = pygame.transform.scale(pygame.image.load(self.base_dir+"icon/mad.png"),(self.CELL_SIZE*2//3, self.CELL_SIZE*2//3))
         #self.head_icon = pygame.transform.scale(pygame.image.load("icon/snake.png"),(self.CELL_SIZE, self.CELL_SIZE))
         #self.body_icon = pygame.transform.scale(pygame.image.load("icon/body.png"),(self.CELL_SIZE, self.CELL_SIZE))
-        self.punch_icon = pygame.transform.scale(pygame.image.load("icon/scary_tree.png"),(self.CELL_SIZE, self.CELL_SIZE))
+        self.punch_icon = pygame.transform.scale(pygame.image.load(self.base_dir+"icon/scary_tree.png"),(self.CELL_SIZE, self.CELL_SIZE))
         self.curr_head = [0,0]
         self.last_head = [0,0]
         self.curr_head_collaborator = [0,0]
         self.last_head_collaborator = [0,0]
         self.internal_padding = self.CELL_SIZE // 5
-        self.text_font = pygame.font.Font("fonts/gyparody_hv.ttf", int(23*(self.CELL_SIZE/40.0)))
-        self.num_font = pygame.font.Font("fonts/gyparody_tf.ttf", int(36*(self.CELL_SIZE/40.0))) 
-        self.marker_font =  pygame.font.Font("fonts/OpenSans-Bold.ttf", int(12*(self.CELL_SIZE/40.0)))
+        self.text_font = pygame.font.Font(self.base_dir+"fonts/gyparody_hv.ttf", int(23*(self.CELL_SIZE/40.0)))
+        self.num_font = pygame.font.Font(self.base_dir+"fonts/gyparody_tf.ttf", int(36*(self.CELL_SIZE/40.0))) 
+        self.marker_font =  pygame.font.Font(self.base_dir+"fonts/OpenSans-Bold.ttf", int(12*(self.CELL_SIZE/40.0)))
         pygame.display.set_caption('Robotaxi')
 
     def set_icon_scheme(self, idx):
         scheme = self.car_schemes[idx]
-        self.south = pygame.transform.scale(pygame.image.load("icon/"+scheme+"_south.png"),(self.CELL_SIZE, self.CELL_SIZE-5))
-        self.north = pygame.transform.scale(pygame.image.load("icon/"+scheme+"_north.png"),(self.CELL_SIZE, self.CELL_SIZE-5))        
-        self.east = pygame.transform.scale(pygame.image.load("icon/"+scheme+"_east.png"),(self.CELL_SIZE, self.CELL_SIZE-5))
+        self.south = pygame.transform.scale(pygame.image.load(self.base_dir+"icon/"+scheme+"_south.png"),(self.CELL_SIZE, self.CELL_SIZE-5))
+        self.north = pygame.transform.scale(pygame.image.load(self.base_dir+"icon/"+scheme+"_north.png"),(self.CELL_SIZE, self.CELL_SIZE-5))        
+        self.east = pygame.transform.scale(pygame.image.load(self.base_dir+"icon/"+scheme+"_east.png"),(self.CELL_SIZE, self.CELL_SIZE-5))
         self.west = pygame.transform.flip(self.east,1,0)
 
     def set_icon_scheme_collaborator(self, idx):
         scheme = self.car_schemes[idx]
-        self.south_collaborator = pygame.transform.scale(pygame.image.load("icon/"+scheme+"_south.png"),(self.CELL_SIZE, self.CELL_SIZE-5))
-        self.north_collaborator = pygame.transform.scale(pygame.image.load("icon/"+scheme+"_north.png"),(self.CELL_SIZE, self.CELL_SIZE-5))        
-        self.east_collaborator = pygame.transform.scale(pygame.image.load("icon/"+scheme+"_east.png"),(self.CELL_SIZE, self.CELL_SIZE-5))
+        self.south_collaborator = pygame.transform.scale(pygame.image.load(self.base_dir+"icon/"+scheme+"_south.png"),(self.CELL_SIZE, self.CELL_SIZE-5))
+        self.north_collaborator = pygame.transform.scale(pygame.image.load(self.base_dir+"icon/"+scheme+"_north.png"),(self.CELL_SIZE, self.CELL_SIZE-5))        
+        self.east_collaborator = pygame.transform.scale(pygame.image.load(self.base_dir+"icon/"+scheme+"_east.png"),(self.CELL_SIZE, self.CELL_SIZE-5))
         self.west_collaborator = pygame.transform.flip(self.east_collaborator,1,0)
 
     def set_fixed_icon_scheme_collaborator(self):
         scheme = 'bulldozer'
-        self.south_collaborator = pygame.transform.scale(pygame.image.load("icon/"+scheme+"_south.png"),(self.CELL_SIZE, self.CELL_SIZE-5))
-        self.north_collaborator = pygame.transform.scale(pygame.image.load("icon/"+scheme+"_north.png"),(self.CELL_SIZE, self.CELL_SIZE-5))        
-        self.east_collaborator = pygame.transform.scale(pygame.image.load("icon/"+scheme+"_east.png"),(self.CELL_SIZE, self.CELL_SIZE-5))
+        self.south_collaborator = pygame.transform.scale(pygame.image.load(self.base_dir+"icon/"+scheme+"_south.png"),(self.CELL_SIZE, self.CELL_SIZE-5))
+        self.north_collaborator = pygame.transform.scale(pygame.image.load(self.base_dir+"icon/"+scheme+"_north.png"),(self.CELL_SIZE, self.CELL_SIZE-5))        
+        self.east_collaborator = pygame.transform.scale(pygame.image.load(self.base_dir+"icon/"+scheme+"_east.png"),(self.CELL_SIZE, self.CELL_SIZE-5))
         self.west_collaborator = pygame.transform.flip(self.east_collaborator,1,0)
 
     def load_environment(self, environment):
@@ -380,7 +385,7 @@ class PyGameGUI:
     def render(self):
         """ Draw the entire game frame. """
         self.screen.fill(Colors.SCREEN_BACKGROUND)
-        num_font = pygame.font.Font("fonts/gyparody_tf.ttf", int(24*(self.CELL_SIZE/40.0)))
+        num_font = pygame.font.Font(self.base_dir+"fonts/gyparody_tf.ttf", int(24*(self.CELL_SIZE/40.0)))
         if self.collaborating_agent is not None:
             icon_list = [self.good_fruit_icon, self.lava_icon]
             text_fields = ["+"+str(self.env.rewards['good_fruit']), str(self.env.rewards['lava'])]
@@ -625,7 +630,7 @@ class PyGameGUI:
                     if event.key == pygame.K_SPACE:
                         self.pause = False
                         if self.frame_num == 0:
-                            pygame.mixer.music.load("sound/background1.mp3") 
+                            pygame.mixer.music.load(self.base_dir+"sound/background1.mp3") 
                             pygame.mixer.music.set_volume(0.4)
                             pygame.mixer.music.play(-1,0.0)
                     if event.key == pygame.K_ESCAPE:
@@ -635,24 +640,25 @@ class PyGameGUI:
                     self.quit_game()
 
 
-    def run(self, num_episodes=1, participant='test'):
+    def run(self, num_episodes=1, participant='test', online_learning=False):
 
         """ Run the GUI player for the specified number of episodes. """
         pygame.display.update()
         self.fps_clock = pygame.time.Clock()
-        if self.collaborating_agent is not None: 
-            capture_thread1 = captureThread(0, participant=participant, data_dir='./user_study_data/', exp_id='collaborative', test=self.test)
-            capture_thread1.start()
-        else:
-            capture_thread1 = captureThread(0, participant=participant, data_dir='./user_study_data/', exp_id='original', test=self.test)
-            capture_thread1.start()
+        if not online_learning:
+            if self.collaborating_agent is not None: 
+                capture_thread1 = captureThread(0, participant=participant, data_dir='./user_study_data/', exp_id='collaborative', test=self.test)
+                capture_thread1.start()
+            else:
+                capture_thread1 = captureThread(0, participant=participant, data_dir='./user_study_data/', exp_id='original', test=self.test)
+                capture_thread1.start()
         try:
             for episode in range(num_episodes):                
                 self.run_episode()
                 pygame.time.wait(1500)
-            capture_thread1.stop()
+            if not online_learning: capture_thread1.stop()
         except QuitRequestedError:
-            capture_thread1.stop()
+            if not online_learning: capture_thread1.stop()
 
     def run_episode(self):
         """ Run the GUI player for a single episode. """
@@ -672,13 +678,13 @@ class PyGameGUI:
             while not self.selected:
                 self.screen.fill(Colors.SCREEN_BACKGROUND)         
                 
-                small_text_font = pygame.font.Font("fonts/gyparody_hv.ttf", int(22*(self.CELL_SIZE/40.0)))  
+                small_text_font = pygame.font.Font(self.base_dir+"fonts/gyparody_hv.ttf", int(22*(self.CELL_SIZE/40.0)))  
                 car_names = ['Amber','Jade','Ruby']     
                 disp_text = self.text_font.render("Select a Vehicle", True, (0, 0, 0))
              
                 self.screen.blit(disp_text, (self.screen_size[0]//2 - disp_text.get_width()//2 , self.screen_size[1] // 3 - disp_text.get_height() ))
                 
-                smaller_text_font = pygame.font.Font("fonts/gyparody_hv.ttf", int(16*(self.CELL_SIZE/40.0))) 
+                smaller_text_font = pygame.font.Font(self.base_dir+"fonts/gyparody_hv.ttf", int(16*(self.CELL_SIZE/40.0))) 
                 disp_text = smaller_text_font.render("Press <Enter> to confirm", True, (90, 90, 90))    
                 self.screen.blit(disp_text, (15 + self.screen_size[0] // 2 - disp_text.get_width()// 2 , self.screen_size[1]*2 // 3 + disp_text.get_height()//2 ))
                 
@@ -735,7 +741,7 @@ class PyGameGUI:
             
             
         self.render()
-        start_text_font = pygame.font.Font("fonts/gyparody_hv.ttf", int(42*(self.CELL_SIZE/40.0))) 
+        start_text_font = pygame.font.Font(self.base_dir+"fonts/gyparody_hv.ttf", int(42*(self.CELL_SIZE/40.0))) 
         disp_text = start_text_font.render("Press <Space> to Start", True, (220, 220, 220))
         self.screen.blit(disp_text, (self.screen_size[0] // 2 - disp_text.get_width()// 2 , self.screen_size[1] // 2 - disp_text.get_height()//2 ))          
         pygame.display.update()
@@ -813,7 +819,7 @@ class PyGameGUI:
                         # collaborator_action = self.collaborating_agent.act(timestep_result_collaborator.observation, timestep_result_collaborator.reward)
                         collaborator_action = self.collaborating_agent.act(timestep_result.observation, timestep_result_collaborator.reward)
                     except:
-                        smaller_text_font = pygame.font.Font("fonts/gyparody_hv.ttf", int(36*(self.CELL_SIZE/40.0))) 
+                        smaller_text_font = pygame.font.Font(self.base_dir+"fonts/gyparody_hv.ttf", int(36*(self.CELL_SIZE/40.0))) 
                         disp_text = smaller_text_font.render("Round Finished", True, (220, 220, 220))    
                         self.screen.blit(disp_text, (15 + self.screen_size[0] // 2 - disp_text.get_width()// 2 , self.screen_size[1]*2 // 3 + disp_text.get_height()//2 ))
                         pygame.display.update()
@@ -848,7 +854,7 @@ class PyGameGUI:
 
                 if timestep_result.is_episode_end:
                     
-                    smaller_text_font = pygame.font.Font("fonts/gyparody_hv.ttf", int(36*(self.CELL_SIZE/40.0))) 
+                    smaller_text_font = pygame.font.Font(self.base_dir+"fonts/gyparody_hv.ttf", int(36*(self.CELL_SIZE/40.0))) 
                     disp_text = smaller_text_font.render("Round Finished", True, (220, 220, 220))    
                     self.screen.blit(disp_text, (15 + self.screen_size[0] // 2 - disp_text.get_width()// 2 , self.screen_size[1]*2 // 3 + disp_text.get_height()//2 ))
                     pygame.display.update()
@@ -858,7 +864,7 @@ class PyGameGUI:
                  
                 if self.collaborating_agent is not None and timestep_result_collaborator.is_episode_end:
                     
-                    smaller_text_font = pygame.font.Font("fonts/gyparody_hv.ttf", int(36*(self.CELL_SIZE/40.0))) 
+                    smaller_text_font = pygame.font.Font(self.base_dir+"fonts/gyparody_hv.ttf", int(36*(self.CELL_SIZE/40.0))) 
                     disp_text = smaller_text_font.render("Round Finished", True, (220, 220, 220))    
                     self.screen.blit(disp_text, (15 + self.screen_size[0] // 2 - disp_text.get_width()// 2 , self.screen_size[1]*2 // 3 + disp_text.get_height()//2 ))
                     pygame.display.update()

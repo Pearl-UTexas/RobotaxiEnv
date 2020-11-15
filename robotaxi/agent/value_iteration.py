@@ -12,7 +12,7 @@ from robotaxi.gameplay.environment import Environment
 class ValueIterationAgent(AgentBase):
     """ Represents a Snake agent that runs value iteration at every step (when nothing was eaten). """
 
-    def __init__(self, grid_size=8, discount=0.95, reward_mapping=None, env=None, level_file='./robotaxi/levels/8x8-blank.json'):
+    def __init__(self, grid_size=8, discount=0.95, reward_mapping=None, env=None, level_file='./RoboTaxiEnv/robotaxi/levels/8x8-blank.json'):
         # 18 * 18 (gridsize-2) * 4 (four directions)
         self.grid_size = grid_size
         self.env = env if env is not None else Environment(config=json.load(open(level_file)), stationary=False)
@@ -70,6 +70,7 @@ class ValueIterationAgent(AgentBase):
             #self.reward_mapping = reward_mapping
             self.set_reward_mapping(reward_mapping)
         self.last_reward = 0.0
+        self.last_pickup = None
         self.last_frame = None
         self.env_changed = True
         for i in range(1,self.grid_size-1):
@@ -159,6 +160,7 @@ class ValueIterationAgent(AgentBase):
         state_x = 0
         state_y = 0 
         state_direction = None
+        self.last_pickup = None
         for x in range(len(observation)):
             self.curr_reward_map.append([])
             for y in range(len(observation[x])):
@@ -177,8 +179,15 @@ class ValueIterationAgent(AgentBase):
                             state_direction = SnakeDirection.WEST
                         else:
                             print("No snake body detected!!!!!") # shouldn't be here
-                    elif (not self.env_changed) and self.data_to_cell_type[observation[x][y]] != self.data_to_cell_type[self.last_frame[x][y]]:
-                        if self.data_to_cell_type[observation[x][y]] != CellType.SNAKE_BODY and self.data_to_cell_type[self.last_frame[x][y]] != CellType.SNAKE_BODY: self.env_changed = True
+
+                        if (not self.last_frame is None) and (self.data_to_cell_type[self.last_frame[x][y]] == CellType.GOOD_FRUIT or self.data_to_cell_type[self.last_frame[x][y]] == CellType.BAD_FRUIT or self.data_to_cell_type[self.last_frame[x][y]] == CellType.LAVA):
+                            self.env_changed = True
+                            self.last_pickup = self.data_to_cell_type[self.last_frame[x][y]] 
+                    elif (not self.env_changed) and self.data_to_cell_type[observation[x][y]] != self.data_to_cell_type[self.last_frame[x][y]]: # cell type changed
+                        if self.data_to_cell_type[observation[x][y]] != CellType.SNAKE_BODY and self.data_to_cell_type[self.last_frame[x][y]] != CellType.SNAKE_BODY: #not snake_body 
+                            self.env_changed = True
+                            
+                
                 else:
                     if self.data_to_cell_type[observation[x][y]] == CellType.COLLABORATOR_HEAD:
                         state_x = x
@@ -211,7 +220,8 @@ class ValueIterationAgent(AgentBase):
                                 elif self.data_to_cell_type[observation[x][y+1]] == CellType.SNAKE_BODY:
                                     state_direction = SnakeDirection.WEST
                     elif (not self.env_changed) and self.data_to_cell_type[observation[x][y]] != self.data_to_cell_type[self.last_frame[x][y]]:
-                        if self.data_to_cell_type[observation[x][y]] != CellType.COLLABORATOR_BODY and self.data_to_cell_type[self.last_frame[x][y]] != CellType.COLLABORATOR_BODY: self.env_changed = True
+                        if self.data_to_cell_type[observation[x][y]] != CellType.COLLABORATOR_BODY and self.data_to_cell_type[self.last_frame[x][y]] != CellType.COLLABORATOR_BODY: 
+                            self.env_changed = True
         #print("curr state",state_x,state_y,state_direction)        
         #for row in self.curr_reward_map:
         #    print(row)
@@ -226,10 +236,10 @@ class ValueIterationAgent(AgentBase):
         return actions
 
 
-    def act(self, observation, reward=0.0):        
+    def act(self, observation, reward=0.0, recompute=False):        
         
         self.compute_reward_map(observation)
-        if self.env_changed:
+        if self.env_changed or recompute:
             self.value_iteration(print_val_map=False)
             #print()
         # select action

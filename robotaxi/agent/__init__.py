@@ -23,12 +23,8 @@ class AgentBase(object):
         pass
 
 
-from .dqn import DeepQNetworkAgent
 from .human import HumanAgent
 from .random_action import RandomActionAgent
 from .value_iteration import ValueIterationAgent
 from .mixed_action_agent import MixedActionAgent
-from .one_hot_dqn import OneHotDQNAgent
-from .tile_coding_agent import TileCodingAgent
-# from .a2c_agent import A2CAgent
-# from .reward_learning_agent import RewardLearningAgent
+from .reward_learning_agent import RewardLearningAgent
