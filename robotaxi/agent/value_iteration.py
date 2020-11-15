@@ -12,7 +12,7 @@ from robotaxi.gameplay.environment import Environment
 class ValueIterationAgent(AgentBase):
     """ Represents a Snake agent that runs value iteration at every step (when nothing was eaten). """
 
-    def __init__(self, grid_size=8, discount=0.95, reward_mapping=None, env=None, level_file='./RoboTaxiEnv/robotaxi/levels/8x8-blank.json'):
+    def __init__(self, grid_size=8, discount=0.95, reward_mapping=None, env=None, level_file='./RobotaxiEnv/robotaxi/levels/8x8-blank.json'):
         # 18 * 18 (gridsize-2) * 4 (four directions)
         self.grid_size = grid_size
         self.env = env if env is not None else Environment(config=json.load(open(level_file)), stationary=False)
