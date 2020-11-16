@@ -29,7 +29,7 @@ detectionwindow_size = window_size
 num_classes1 = 3
 num_classes2 = window_size * 10
 
-model_dir = './MLP_detector_reward_models/' 
+model_dir = './online_learning_reward_models/' 
 data_dir = "./openface_out/" 
 
 curr_feature_out = None
