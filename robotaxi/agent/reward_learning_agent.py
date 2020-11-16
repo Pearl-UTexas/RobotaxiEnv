@@ -10,6 +10,7 @@ from matplotlib.cbook import get_sample_data
 from matplotlib import gridspec
 import threading
 import time
+import robotaxi
 
 matplotlib.rcParams['toolbar'] = 'None'
 robotaxi_path = os.path.dirname(robotaxi.gameplay.environment.__file__)
