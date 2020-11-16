@@ -12,6 +12,8 @@ import threading
 import time
 
 matplotlib.rcParams['toolbar'] = 'None'
+robotaxi_path = os.path.dirname(robotaxi.gameplay.environment.__file__)
+
 
 class RewardLearningAgent(AgentBase):
     """ Represents a agent that takes an action by 
@@ -97,7 +99,7 @@ class RewardLearningAgent(AgentBase):
         reward_str = ','.join([str(m) for m in self.reward_matchings])
         self.log_file.write('action_ct, update_ct, optimal, entropy, ' + reward_str + '\n')
         self.last_num_updates = 0
-        self.icons = [plt.imread(get_sample_data('/home/yuchen/projects/snake-RL/icon/' + icon_name)) for icon_name in ['purple_car.png','road_block.png','man.png']]
+        self.icons = [plt.imread(get_sample_data(robotaxi_path+'/../../icon/' + icon_name)) for icon_name in ['purple_car.png','road_block.png','man.png']]
         
         #self.fig = plt.figure(figsize=(10, 3.5)) 
         #gs = gridspec.GridSpec(1, 2, width_ratios=[1, 2]) 
