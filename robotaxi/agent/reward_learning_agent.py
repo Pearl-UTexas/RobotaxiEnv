@@ -11,6 +11,7 @@ from matplotlib import gridspec
 import threading
 import time
 import robotaxi
+import robotaxi.gameplay.environment
 
 matplotlib.rcParams['toolbar'] = 'None'
 robotaxi_path = os.path.dirname(robotaxi.gameplay.environment.__file__)
